@@ -1,3 +1,3 @@
 # BlobstorageSwift
 
-A description of this package.
+This package is under development and not ready for any use whatsoever.
