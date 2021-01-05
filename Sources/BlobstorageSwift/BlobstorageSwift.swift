@@ -1,10 +1,5 @@
 import Vapor
 
-struct StorageConfiguration {
-    let connectionString: String
-    let useEmulator: Bool
-}
-
 public enum KeyType: String {
     case sharedKey = "SharedKey"
     case sharedKeyLite = "SharedKeyLite"
