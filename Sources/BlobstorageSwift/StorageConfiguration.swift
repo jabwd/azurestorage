@@ -15,6 +15,10 @@ public struct StorageConfiguration: Equatable {
     let queueEndpoint: URL
     let tableEndpoint: URL
 
+    /// Constructs a new configuration object
+    ///  Use `UseDevelopmentStorage=true` to make use of local storage emulator
+    /// - Parameter connectionString: Azure Storage connection string
+    /// - Throws: A `StorageError` if its unable to parse the provided connection string
     init(_ connectionString: String) throws {
         let strComponents = connectionString.split(separator: ";").filter { !$0.isEmpty }
         var kvStore: [String: String] = [:]

@@ -1,10 +1,5 @@
 import Vapor
 
-public enum KeyType: String {
-    case sharedKey = "SharedKey"
-    case sharedKeyLite = "SharedKeyLite"
-}
-
 public struct Blobstorage {
     let application: Application
     
@@ -12,12 +7,30 @@ public struct Blobstorage {
         application = app
     }
     
-    static func generateAuthorizationHeader(
+    static func generateSignature(
         httpMethod: HTTPMethod,
         timestamp: Int,
-        key: String,
-        keyType: KeyType = .sharedKey
+        key: String
     ) -> String {
+        // only header values, not names
+        // If x-ms-date is present Date can be an empty newline
+
+        _ = """
+GET
+
+
+
+
+Date
+
+
+
+
+
+CanonicalizedHeaders
+CanonicalizedResource
+"""
+
         /*
          StringToSign = VERB + "\n" +
          Content-Encoding + "\n" +
@@ -34,11 +47,11 @@ public struct Blobstorage {
          CanonicalizedHeaders +
          CanonicalizedResource;
          */
-        var stringToSign = "\(httpMethod.rawValue.uppercased())\n"
+        /* var stringToSign = "\(httpMethod.rawValue.uppercased())\n"
         var components: [String] = [
             httpMethod.string,
             
-        ]
+        ] */
         return ""
     }
 }

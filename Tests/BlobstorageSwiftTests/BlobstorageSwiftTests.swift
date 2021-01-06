@@ -46,11 +46,12 @@ final class BlobstorageSwiftTests: XCTestCase {
     }
     
     func testListContainers() {
+        _ = try! StorageConfiguration("UseDevelopmentStorage=true")
     }
 
     static var allTests = [
-        ("List Containers", testListContainers),
-        ("Decode connection string", testDecodeConnectionString),
-        ("Generate signature", testGenerateSignature)
+        ("testDecodeConnectionString", testDecodeConnectionString),
+        ("testGenerateSignature", testGenerateSignature),
+        ("testListContainers", testListContainers),
     ]
 }
