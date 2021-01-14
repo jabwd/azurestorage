@@ -28,8 +28,8 @@ public struct Container: Codable, CustomStringConvertible {
     public let etag: String
     public let leaseStatus: String
     public let leaseState: String
-    public let immutibilityPolicy: Bool
-    public let legalHold: Bool
+    public let immutibilityPolicy: Bool?
+    public let legalHold: Bool?
 
     init(_ entity: ContainerEntity) {
         self.name = entity.name

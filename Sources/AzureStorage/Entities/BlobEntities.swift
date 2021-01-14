@@ -18,8 +18,8 @@ struct BlobEntity: Codable {
     }
 
     struct Properties: Codable {
-        let creationTime: String
-        let lastModified: String
+        let creationTime: String?
+        let lastModified: String?
         let etag: String
         let contentLength: Int
         let contentType: String
@@ -31,8 +31,8 @@ struct BlobEntity: Codable {
         let blobType: String // TODO: Make an enum out of this
         let leaseStatus: String
         let leaseState: String
-        let accessTier: String
-        let accessTierInferred: Bool
+        let accessTier: String?
+        let accessTierInferred: Bool?
 
         public enum CodingKeys: String, CodingKey {
             case creationTime = "Creation-Time"

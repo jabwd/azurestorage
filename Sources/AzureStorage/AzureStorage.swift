@@ -68,6 +68,15 @@ public struct AzureStorage {
         }
     }
 
+    public func readBlob(_ containerName: String, blobName: String) {
+    }
+
+    public func deleteBlob(_ containerName: String, blobName: String) {
+    }
+
+    public func putBlob(_ containerName: String, blobName: String) {
+    }
+
     public func listBlobs(_ container: Container) -> EventLoopFuture<[Blob]> {
         listBlobs(container.name)
     }

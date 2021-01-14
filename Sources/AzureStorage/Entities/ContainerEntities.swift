@@ -21,8 +21,8 @@ struct ContainerEntity: Codable {
         let etag: String
         let leaseStatus: String
         let leaseState: String
-        let immutibilityPolicy: Bool
-        let legalHold: Bool
+        let immutibilityPolicy: Bool?
+        let legalHold: Bool?
 
         public enum CodingKeys: String, CodingKey {
             case lastModified = "Last-Modified"

@@ -12,7 +12,7 @@ import Foundation
 
 struct ContainersEnumerationResultsEntity: Codable {
     let prefix: String?
-    let maxResults: Int
+    let maxResults: Int?
     let serviceEndpoint: String
     let containers: ContainersEntity
     let nextMarker: String?
@@ -36,7 +36,7 @@ struct ContainersEnumerationResultsEntity: Codable {
 
 struct BlobsEnumerationResultsEntity: Codable {
     let prefix: String?
-    let maxResults: Int
+    let maxResults: Int?
     let serviceEndpoint: String
     let blobs: ContainersEntity
     let nextMarker: String?

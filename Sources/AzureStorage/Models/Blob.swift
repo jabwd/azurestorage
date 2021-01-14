@@ -9,8 +9,8 @@ import Foundation
 
 public struct Blob: Codable, CustomStringConvertible {
     public let name: String
-    public let created: Date
-    public let lastModified: Date
+    public let created: Date?
+    public let lastModified: Date?
     public let etag: String
     public let count: Int
     public let contentType: String
@@ -19,13 +19,13 @@ public struct Blob: Codable, CustomStringConvertible {
     public let blobType: String
     public let leaseStatus: String
     public let leaseState: String
-    public let accessTier: String
-    public let accessTierInferred: Bool
+    public let accessTier: String?
+    public let accessTierInferred: Bool?
 
     init(_ entity: BlobEntity) {
         self.name = entity.name
-        self.created = DateFormatter.xMSDateFormatter.date(from: entity.properties.creationTime) ?? Date()
-        self.lastModified = DateFormatter.xMSDateFormatter.date(from: entity.properties.lastModified) ?? Date()
+        self.created = DateFormatter.xMSDateFormatter.date(from: entity.properties.creationTime ?? "")
+        self.lastModified = DateFormatter.xMSDateFormatter.date(from: entity.properties.lastModified ?? "")
         self.etag = entity.properties.etag
         self.count = entity.properties.contentLength
         self.contentType = entity.properties.contentType
@@ -42,7 +42,7 @@ public struct Blob: Codable, CustomStringConvertible {
         """
 Blob {
     name = "\(name)",
-    created = "\(self.created)",
+    created = "\(self.created?.description ?? "Unknown")",
     count = \(count)
 }
 """

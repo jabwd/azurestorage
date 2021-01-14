@@ -75,8 +75,8 @@ public struct StorageConfiguration: Equatable {
         sharedKey = accountKey
         useHttps = defaultHttps
 
-        let urlString = "\(defaultHttps ? "https" : "http")://\(accountName).\(endPointSuffix)"
-        blobEndpoint = URL(string: urlString)!
+        let urlString = "\(defaultHttps ? "https" : "http")://\(accountName).blob.\(endPointSuffix)"
+        blobEndpoint = URL(string: "\(defaultHttps ? "https" : "http")://\(accountName).blob.\(endPointSuffix)")!
         queueEndpoint = URL(string: urlString)!
         tableEndpoint = URL(string: urlString)!
     }
