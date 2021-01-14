@@ -93,7 +93,10 @@ fileprivate func generateSignature(
 
     stringToSign.append("/\(configuration.accountName)\(uri.path)")
     if let params = uri.query?.queryParameters {
-        for param in params {
+        let sortedParams = params.sorted { (lh, rh) -> Bool in
+            lh.key.compare(rh.key) == .orderedAscending
+        }
+        for param in sortedParams {
             stringToSign.append("\n\(param.key):\(param.value)")
         }
     }

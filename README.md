@@ -6,6 +6,9 @@ This package is under development and not ready for production use.
 ## Features
 - [x] Listing containers in a given storage account
 - [ ] Listing blobs in a container
+- [ ] Container management (including metadata)
+- [ ] ACL Support
+- [ ] SAS support
 - [ ] CRUD operations for blobs in a container
 
 I don't have plans to support TableQueue or the File service at this point in time
