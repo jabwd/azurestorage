@@ -34,15 +34,6 @@ extension String {
     }
 }
 
-extension Date {
-    var xMSDateFormat: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, d MMM yyyy HH:mm:ss z"
-        formatter.timeZone = TimeZone.init(secondsFromGMT: 0)
-        return formatter.string(from: Date())
-    }
-}
-
 struct StorageAuthorization {
     let method: HTTPMethod
     let headers: HTTPHeaders
