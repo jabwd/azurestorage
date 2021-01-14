@@ -42,14 +42,32 @@ final class BlobstorageSwiftTests: XCTestCase {
             XCTAssert(false, "\(error)")
         }
     }
+
+    func testCreateContainer() {
+
+    }
     
     func testListContainers() {
-        _ = try! StorageConfiguration("UseDevelopmentStorage=true")
         let group = DispatchGroup()
         group.enter()
 
         _ = app.azureStorage.listContainers().map { res in
-            print("Result: \(res)")
+            print("Containers: \(res)")
+            group.leave()
+        }
+        group.wait()
+    }
+
+    func testDeleteContainer() {
+
+    }
+
+    func testListBlobs() {
+        let group = DispatchGroup()
+        group.enter()
+
+        _ = app.azureStorage.listBlobs("videofiles").map { res in
+            print("Blobs: \(res)")
             group.leave()
         }
         group.wait()
@@ -57,6 +75,9 @@ final class BlobstorageSwiftTests: XCTestCase {
 
     static var allTests = [
         ("testDecodeConnectionString", testDecodeConnectionString),
+        ("testCreateContainer", testCreateContainer),
         ("testListContainers", testListContainers),
+        ("testDeleteContainer", testDeleteContainer),
+        ("testListBlobs", testListBlobs)
     ]
 }

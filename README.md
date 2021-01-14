@@ -10,6 +10,7 @@ This package is under development and not ready for production use.
 - [ ] ACL Support
 - [ ] SAS support
 - [ ] CRUD operations for blobs in a container
+- [ ] Things I probably forgot about
 
 I don't have plans to support TableQueue or the File service at this point in time
 

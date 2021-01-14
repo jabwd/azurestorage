@@ -22,7 +22,7 @@ extension Date {
     }
 }
 
-public struct Container: CustomStringConvertible {
+public struct Container: Codable, CustomStringConvertible {
     public let name: String
     public let lastModified: Date?
     public let etag: String

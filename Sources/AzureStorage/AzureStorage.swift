@@ -28,7 +28,7 @@ public struct AzureStorage {
     }
 
     public func listContainers() -> EventLoopFuture<[Container]> {
-        let url = URI(string: "http://localhost:10000/devstoreaccount1/?comp=list")
+        let url = URI(string: "\(configuration.blobEndpoint.absoluteString)/?comp=list")
         return get(url).map { response -> [Container] in
             guard var body = response.body else {
                 return []
@@ -37,9 +37,9 @@ public struct AzureStorage {
             let data = body.readData(length: readableBytes) ?? Data()
             let decoder = XMLDecoder()
             do {
-                let response = try decoder.decode(EnumerationResultsEntity.self, from: data)
+                let response = try decoder.decode(ContainersEnumerationResultsEntity.self, from: data)
                 let containers = response.containers.list.map { Container($0) }
-                print("Response: \(containers)")
+                return containers
             } catch {
                 print("Error: \(error)")
             }
@@ -47,8 +47,29 @@ public struct AzureStorage {
         }
     }
 
-    public func listContainerContents() {
-        
+    public func listBlobs(_ name: String) -> EventLoopFuture<[Blob]> {
+        let endpoint = "/\(name)?restype=container&comp=list"
+        let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
+        return get(url).map { response -> [Blob] in
+            guard var body = response.body else {
+                return []
+            }
+            let readableBytes = body.readableBytes
+            let data = body.readData(length: readableBytes) ?? Data()
+            let decoder = XMLDecoder()
+            do {
+                let response = try decoder.decode(BlobsEnumerationResultsEntity.self, from: data)
+                let blobs = response.blobs.list.map { Blob($0) }
+                return blobs
+            } catch {
+                print("Error: \(error)")
+            }
+            return []
+        }
+    }
+
+    public func listBlobs(_ container: Container) -> EventLoopFuture<[Blob]> {
+        listBlobs(container.name)
     }
 }
 

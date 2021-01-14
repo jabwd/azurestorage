@@ -1,14 +1,16 @@
 //
-//  ContainerList.swift
+//  EnumerationResultsEntity.swift
 //  
 //
 //  Created by Antwan van Houdt on 14/01/2021.
 //
 
-import Foundation
-import XMLParsing
+// TODO: Should figure out if i could make this more generic
+// or perhaps not use codable and all and bite the bullet to go for libxml or something.
 
-struct EnumerationResultsEntity: Codable {
+import Foundation
+
+struct ContainersEnumerationResultsEntity: Codable {
     let prefix: String?
     let maxResults: Int
     let serviceEndpoint: String
@@ -32,30 +34,26 @@ struct EnumerationResultsEntity: Codable {
     }
 }
 
-struct ContainerEntity: Codable {
-    let name: String
-    let properties: Properties
+struct BlobsEnumerationResultsEntity: Codable {
+    let prefix: String?
+    let maxResults: Int
+    let serviceEndpoint: String
+    let blobs: ContainersEntity
+    let nextMarker: String?
 
     public enum CodingKeys: String, CodingKey {
-        case name = "Name"
-        case properties = "Properties"
+        case prefix = "Prefix"
+        case maxResults = "MaxResults"
+        case serviceEndpoint = "ServiceEndpoint"
+        case blobs = "Blobs"
+        case nextMarker = "NextMarker"
     }
 
-    struct Properties: Codable {
-        let lastModified: String
-        let etag: String
-        let leaseStatus: String
-        let leaseState: String
-        let immutibilityPolicy: Bool
-        let legalHold: Bool
+    struct ContainersEntity: Codable {
+        let list: [BlobEntity]
 
         public enum CodingKeys: String, CodingKey {
-            case lastModified = "Last-Modified"
-            case etag = "Etag"
-            case leaseStatus = "LeaseStatus"
-            case leaseState = "LeaseState"
-            case immutibilityPolicy = "HasImmutabilityPolicy"
-            case legalHold = "HasLegalHold"
+            case list = "Blob"
         }
     }
 }
