@@ -1,7 +1,7 @@
 import XCTest
 import XCTVapor
 import Vapor
-@testable import BlobstorageSwift
+@testable import AzureStorage
 
 extension StorageConfiguration {
     static var developmentConfiguration: StorageConfiguration {
@@ -20,6 +20,7 @@ final class BlobstorageSwiftTests: XCTestCase {
     let app: Application = Application(.testing)
 
     override func setUp() {
+        app.azureStorageConfiguration = StorageConfiguration.developmentConfiguration
     }
 
     override func tearDown() {
@@ -41,16 +42,13 @@ final class BlobstorageSwiftTests: XCTestCase {
             XCTAssert(false, "\(error)")
         }
     }
-
-    func testGenerateSignature() {
-    }
     
     func testListContainers() {
         _ = try! StorageConfiguration("UseDevelopmentStorage=true")
         let group = DispatchGroup()
         group.enter()
 
-        _ = app.blobstorage.listContainers().map { res in
+        _ = app.azureStorage.listContainers().map { res in
             print("Result: \(res)")
             group.leave()
         }
@@ -59,7 +57,6 @@ final class BlobstorageSwiftTests: XCTestCase {
 
     static var allTests = [
         ("testDecodeConnectionString", testDecodeConnectionString),
-        ("testGenerateSignature", testGenerateSignature),
         ("testListContainers", testListContainers),
     ]
 }

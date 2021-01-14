@@ -5,7 +5,22 @@
 //  Created by Antwan van Houdt on 05/01/2021.
 //
 
-import Foundation
+import Vapor
+
+public extension Application {
+    var azureStorageConfiguration: StorageConfiguration? {
+        get {
+            self.storage[StorageConfigurationKey]
+        }
+        set {
+            self.storage[StorageConfigurationKey] = newValue
+        }
+    }
+}
+
+struct StorageConfigurationKey: StorageKey {
+    typealias Value = StorageConfiguration
+}
 
 public struct StorageConfiguration: Equatable {
     public let accountName: String

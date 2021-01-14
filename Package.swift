@@ -2,28 +2,30 @@
 import PackageDescription
 
 let package = Package(
-    name: "BlobstorageSwift",
+    name: "AzureStorage",
     platforms: [
         .macOS(.v10_15)
     ],
     products: [
         .library(
-            name: "BlobstorageSwift",
-            targets: ["BlobstorageSwift"]),
+            name: "AzureStorage",
+            targets: ["AzureStorage"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.36.0")
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.36.0"),
+        .package(url: "https://github.com/ShawnMoore/XMLParsing.git", from: "0.0.3")
     ],
     targets: [
         .target(
-            name: "BlobstorageSwift",
+            name: "AzureStorage",
             dependencies: [
-                .product(name: "Vapor", package: "vapor")
+                .product(name: "Vapor", package: "vapor"),
+                .product(name: "XMLParsing", package: "XMLParsing"),
             ]),
         .testTarget(
             name: "BlobstorageSwiftTests",
             dependencies: [
-                "BlobstorageSwift",
+                "AzureStorage",
                 .product(name: "XCTVapor", package: "vapor")
             ]),
     ]
