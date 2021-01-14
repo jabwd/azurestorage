@@ -47,6 +47,14 @@ final class BlobstorageSwiftTests: XCTestCase {
     
     func testListContainers() {
         _ = try! StorageConfiguration("UseDevelopmentStorage=true")
+        let group = DispatchGroup()
+        group.enter()
+
+        _ = app.blobstorage.listContainers().map { res in
+            print("Result: \(res)")
+            group.leave()
+        }
+        group.wait()
     }
 
     static var allTests = [

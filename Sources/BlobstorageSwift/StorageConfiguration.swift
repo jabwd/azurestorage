@@ -8,19 +8,22 @@
 import Foundation
 
 public struct StorageConfiguration: Equatable {
-    let accountName: String
-    let sharedKey: String
-    let useHttps: Bool
-    let blobEndpoint: URL
-    let queueEndpoint: URL
-    let tableEndpoint: URL
+    public let accountName: String
+    public let sharedKey: String
+    public let useHttps: Bool
+    public let blobEndpoint: URL
+    public let queueEndpoint: URL
+    public let tableEndpoint: URL
 
     /// Constructs a new configuration object
     ///  Use `UseDevelopmentStorage=true` to make use of local storage emulator
     /// - Parameter connectionString: Azure Storage connection string
     /// - Throws: A `StorageError` if its unable to parse the provided connection string
-    init(_ connectionString: String) throws {
+    public init(_ connectionString: String) throws {
         let strComponents = connectionString.split(separator: ";").filter { !$0.isEmpty }
+
+        // Decode the azure storage connection string into a key value store
+        // thats more easy to reason about below
         var kvStore: [String: String] = [:]
         for component in strComponents {
             let kvIndex = component.firstIndex { $0 == "=" }
@@ -30,15 +33,19 @@ public struct StorageConfiguration: Equatable {
                 kvStore[String(key)] = String(value)
             }
         }
+
+        // UseDevelopmentStorage means we want to make use of the azure storage emulator ( like azurite )
+        // which has very specific settings including a pre-defined static shared key
         if (kvStore["UseDevelopmentStorage"] == "true") {
             accountName = "devstoreaccount1"
             sharedKey = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
             useHttps = false
             blobEndpoint = URL(string: "http://127.0.0.1:10000/devstoreaccount1")!
             queueEndpoint = URL(string: "http://127.0.0.1:10001/devstoreaccount1")!
-            tableEndpoint = URL(string: "http://127.0.0.1:10001/devstoreaccount1")!
+            tableEndpoint = queueEndpoint
             return
         }
+
         guard let accountKey = kvStore["AccountKey"] else {
             throw StorageError.invalidConnectionString("Missing account key")
         }
@@ -59,7 +66,14 @@ public struct StorageConfiguration: Equatable {
         tableEndpoint = URL(string: urlString)!
     }
 
-    init(accountName: String, sharedKey: String, useHttps: Bool, blobEndpoint: URL, queueEndpoint: URL, tableEndpoint: URL) {
+    init(
+        accountName: String,
+        sharedKey: String,
+        useHttps: Bool = true,
+        blobEndpoint: URL,
+        queueEndpoint: URL,
+        tableEndpoint: URL
+    ) {
         self.accountName = accountName
         self.sharedKey = sharedKey
         self.useHttps = useHttps
