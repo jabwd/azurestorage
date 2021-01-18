@@ -8,6 +8,18 @@
 import Vapor
 import Foundation
 
+struct BlockListEntity: Codable {
+    let latest: [String]
+
+    public enum CodingKeys: String, CodingKey {
+        case latest = "Latest"
+    }
+
+    init(blockIDs: [String]) {
+        self.latest = blockIDs
+    }
+}
+
 struct BlobEntity: Codable {
     let name: String
     let properties: Properties

@@ -27,57 +27,85 @@ final class BlobstorageSwiftTests: XCTestCase {
         app.shutdown()
     }
 
-    func testDecodeConnectionString() {
-        let test = "DefaultEndpointsProtocol=https;AccountName=storage;AccountKey=LolSomeKeyXDDDD==;EndpointSuffix=core.windows.net"
-        do {
-            let config = try StorageConfiguration(test)
-            XCTAssert(config.useHttps, "UseHTTPS parsed wrongly")
-            XCTAssert(config.accountName == "storage", "Account name not parsed properly, got: \(config.accountName)")
-            XCTAssert(config.sharedKey == "LolSomeKeyXDDDD==", "Account key parsed wrongly, got: \(config.sharedKey)")
-            XCTAssert(config.blobEndpoint.absoluteString.hasSuffix("core.windows.net"), "Endpoint not constructed correctly, got \(config.blobEndpoint.absoluteString)")
+//    func testDecodeConnectionString() {
+//        let test = "DefaultEndpointsProtocol=https;AccountName=storage;AccountKey=LolSomeKeyXDDDD==;EndpointSuffix=core.windows.net"
+//        do {
+//            let config = try StorageConfiguration(test)
+//            XCTAssert(config.useHttps, "UseHTTPS parsed wrongly")
+//            XCTAssert(config.accountName == "storage", "Account name not parsed properly, got: \(config.accountName)")
+//            XCTAssert(config.sharedKey == "LolSomeKeyXDDDD==", "Account key parsed wrongly, got: \(config.sharedKey)")
+//            XCTAssert(config.blobEndpoint.absoluteString.hasSuffix("core.windows.net"), "Endpoint not constructed correctly, got \(config.blobEndpoint.absoluteString)")
+//
+//            let devConfig = try StorageConfiguration("UseDevelopmentStorage=true")
+//            XCTAssert(devConfig == StorageConfiguration.developmentConfiguration, "UseDevelopmentStorage=true not handled")
+//        } catch {
+//            XCTAssert(false, "\(error)")
+//        }
+//    }
+//
+//    func testCreateContainer() {
+//
+//    }
+//
+//    func testListContainers() {
+//        let group = DispatchGroup()
+//        group.enter()
+//
+//        _ = app.azureStorage.listContainers().map { res in
+//            print("Containers: \(res)")
+//            group.leave()
+//        }
+//        group.wait()
+//    }
+//
+//    func testDeleteContainer() {
+//
+//    }
+//
+//    func testListBlobs() {
+//        let group = DispatchGroup()
+//        group.enter()
+//
+//        _ = app.azureStorage.listBlobs("videofiles").map { res in
+//            print("Blobs: \(res)")
+//            group.leave()
+//        }
+//        group.wait()
+//    }
 
-            let devConfig = try StorageConfiguration("UseDevelopmentStorage=true")
-            XCTAssert(devConfig == StorageConfiguration.developmentConfiguration, "UseDevelopmentStorage=true not handled")
-        } catch {
-            XCTAssert(false, "\(error)")
-        }
-    }
-
-    func testCreateContainer() {
-
-    }
-    
-    func testListContainers() {
+    func testBlobs() {
+        
         let group = DispatchGroup()
         group.enter()
 
-        _ = app.azureStorage.listContainers().map { res in
-            print("Containers: \(res)")
+        let data = try! Data(contentsOf: URL(string: "file:///Users/jabwd/Developer/Triple/AzureStorage/README.md")!)
+        let buff = Array(data)
+        let blockFuture = app.azureStorage.putBlock("videofiles", blobName: "readme2.md", data: buff).map { res -> String in
+            guard let blockID = res else {
+                XCTAssert(false, "Did not receive a blockID")
+                group.leave()
+                return ""
+            }
+            return blockID
+        }
+
+        _ = blockFuture.map { blockID -> () in
+            let list = [blockID]
+            _ = self.app.azureStorage.putBlockList("videofiles", blobName: "readme2.md", list: list).map { (response) -> () in
+                print("AZS Response: \(response)")
+            }
             group.leave()
         }
-        group.wait()
-    }
 
-    func testDeleteContainer() {
-
-    }
-
-    func testListBlobs() {
-        let group = DispatchGroup()
-        group.enter()
-
-        _ = app.azureStorage.listBlobs("videofiles").map { res in
-            print("Blobs: \(res)")
-            group.leave()
-        }
         group.wait()
     }
 
     static var allTests = [
-        ("testDecodeConnectionString", testDecodeConnectionString),
-        ("testCreateContainer", testCreateContainer),
-        ("testListContainers", testListContainers),
-        ("testDeleteContainer", testDeleteContainer),
-        ("testListBlobs", testListBlobs)
+//        ("testDecodeConnectionString", testDecodeConnectionString),
+//        ("testCreateContainer", testCreateContainer),
+//        ("testListContainers", testListContainers),
+//        ("testDeleteContainer", testDeleteContainer),
+//        ("testListBlobs", testListBlobs),
+        ("testBlobs", testBlobs),
     ]
 }

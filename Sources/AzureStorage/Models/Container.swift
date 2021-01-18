@@ -49,7 +49,6 @@ Container {
     etag = "\(etag)"
     leaseStatus = "\(leaseStatus)"
     leaseState = "\(leaseState)"
-    legalHold = "\(legalHold)"
 }
 """
     }

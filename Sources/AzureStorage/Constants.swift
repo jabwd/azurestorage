@@ -5,7 +5,8 @@
 //
 
 struct AZS {
-    static let version: String = "2015-04-05"
+    // static let version: String = "2015-04-05"
+    static let version: String = "2019-07-07"
 
     static let canonicalPrefix = "x-ms"
     static let dateHeader = "x-ms-date"
