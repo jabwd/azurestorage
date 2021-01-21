@@ -14,7 +14,7 @@ public struct AzureStorage {
         self.configuration = configuration
     }
 
-    internal func execute(_ method: HTTPMethod, url: URI, body: [UInt8]? = nil) -> EventLoopFuture<ClientResponse> {
+    internal func execute(_ method: HTTPMethod, url: URI, body: [UInt8]? = nil, mimeType: String = "application/octet-stream") -> EventLoopFuture<ClientResponse> {
         let headers = HTTPHeaders([
             (AZS.dateHeader, "\(Date().xMSDateFormat)"),
             (AZS.versionHeader, AZS.version),
@@ -22,7 +22,7 @@ public struct AzureStorage {
         return application.client.send(method, headers: headers, to: url) { req -> () in
             if let body = body {
                 req.headers.add(name: "Content-Length", value: "\(body.count)")
-                req.headers.add(name: "Content-Type", value: "application/octet-stream")
+                req.headers.add(name: "Content-Type", value: mimeType)
                 req.body = ByteBuffer(bytes: body)
             }
             let authorization = StorageAuthorization(method, headers: req.headers, url: url, config: configuration)
@@ -89,7 +89,7 @@ public struct AzureStorage {
         }
     }
 
-    public func putBlock(_ containerName: String, blobName: String, data: [UInt8]) -> EventLoopFuture<String?> {
+    public func putBlock(_ containerName: String, blobName: String, data: [UInt8], mimeType: String) -> EventLoopFuture<String?> {
         guard let blockID = Data.random(bytes: 16)?.base64EncodedString() else {
             return application.eventLoopGroup.future(error: StorageError.randomBytesExhausted)
         }
@@ -98,7 +98,7 @@ public struct AzureStorage {
         }
         let endpoint = "/\(containerName)/\(blobName)?comp=block&blockid=\(encodedID)"
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
-        return execute(.PUT, url: url, body: data).map { response -> String? in
+        return execute(.PUT, url: url, body: data, mimeType: mimeType).map { response -> String? in
             if (response.status != .created) {
                 return nil
             }
@@ -106,7 +106,7 @@ public struct AzureStorage {
         }
     }
 
-    public func putBlockList(_ containerName: String, blobName: String, list: [String]) -> EventLoopFuture<ClientResponse> {
+    public func putBlockList(_ containerName: String, blobName: String, list: [String], mimeType: String) -> EventLoopFuture<ClientResponse> {
         let entity = BlockListEntity(blockIDs: list)
         let encoder = XMLEncoder()
         guard let data = try? encoder.encode(entity, withRootKey: "BlockList") else {
@@ -114,7 +114,7 @@ public struct AzureStorage {
         }
         let endpoint = "/\(containerName)/\(blobName)?comp=blocklist"
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
-        return execute(.PUT, url: url, body: Array(data)).map { response -> ClientResponse in
+        return execute(.PUT, url: url, body: Array(data), mimeType: mimeType).map { response -> ClientResponse in
             response
         }
     }
