@@ -14,49 +14,25 @@ public struct AzureStorage {
         self.configuration = configuration
     }
 
-    internal func execute(_ method: HTTPMethod, url: URI, body: [UInt8]? = nil, params: [(String, String)] = []) -> EventLoopFuture<ClientResponse> {
+    internal func execute(_ method: HTTPMethod, url: URI, body: [UInt8]? = nil) -> EventLoopFuture<ClientResponse> {
         let headers = HTTPHeaders([
             (AZS.dateHeader, "\(Date().xMSDateFormat)"),
             (AZS.versionHeader, AZS.version),
         ])
-        let beforeSend: (inout ClientRequest) throws -> ()  = { req -> () in
+        return application.client.send(method, headers: headers, to: url) { req -> () in
             if let body = body {
                 req.headers.add(name: "Content-Length", value: "\(body.count)")
                 req.headers.add(name: "Content-Type", value: "application/octet-stream")
                 req.body = ByteBuffer(bytes: body)
             }
-            let authorization = StorageAuthorization(method, headers: req.headers, queryParams: params, url: url, config: configuration)
+            let authorization = StorageAuthorization(method, headers: req.headers, url: url, config: configuration)
             req.headers.add(name: "Authorization", value: authorization.headerValue)
-        }
-        let client = application.client
-        switch method {
-        case .GET:
-            return client.get(url, headers: headers, beforeSend: beforeSend)
-        case .PUT:
-            return client.put(url, headers: headers, beforeSend: beforeSend)
-        case .DELETE:
-            return client.delete(url, headers: headers, beforeSend: beforeSend)
-        default:
-            return application.eventLoopGroup.future(error: Abort(.notImplemented))
-        }
-    }
-
-    internal func get(_ url: URI, queryParams: [(String, String)]) -> EventLoopFuture<ClientResponse> {
-        return application.eventLoopGroup.future().flatMap { _ -> EventLoopFuture<ClientResponse> in
-            let headers = HTTPHeaders([
-                (AZS.dateHeader, "\(Date().xMSDateFormat)"),
-                (AZS.versionHeader, AZS.version),
-            ])
-            return self.application.client.get(url, headers: headers) { req -> () in
-                let authorization = StorageAuthorization(.GET, headers: headers, queryParams: queryParams, url: url, config: configuration)
-                req.headers.add(name: "Authorization", value: authorization.headerValue)
-            }
         }
     }
 
     public func listContainers() -> EventLoopFuture<[Container]> {
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)/?comp=list")
-        return get(url, queryParams: [("comp", "list")]).map { response -> [Container] in
+        return execute(.GET, url: url).map { response -> [Container] in
             guard var body = response.body else {
                 return []
             }
@@ -77,7 +53,7 @@ public struct AzureStorage {
     public func listBlobs(_ name: String) -> EventLoopFuture<[Blob]> {
         let endpoint = "/\(name)?restype=container&comp=list"
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
-        return get(url, queryParams: [("restype", "container"), ("comp", "list")]).map { response -> [Blob] in
+        return execute(.GET, url: url).map { response -> [Blob] in
             guard var body = response.body else {
                 return []
             }
@@ -99,10 +75,18 @@ public struct AzureStorage {
         listBlobs(container.name)
     }
 
-    public func readBlob(_ containerName: String, blobName: String) {
+    public func readBlob(_ containerName: String, blobName: String) -> EventLoopFuture<ClientResponse> {
+        let endpoint = "/\(containerName)/\(blobName)"
+        let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
+        return execute(.GET, url: url)
     }
 
-    public func deleteBlob(_ containerName: String, blobName: String) {
+    public func deleteBlob(_ containerName: String, blobName: String) -> EventLoopFuture<Bool> {
+        let endpoint = "/\(containerName)/\(blobName)"
+        let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
+        return execute(.DELETE, url: url).map { response -> Bool in
+            response.status == .accepted
+        }
     }
 
     public func putBlock(_ containerName: String, blobName: String, data: [UInt8]) -> EventLoopFuture<String?> {
@@ -114,10 +98,7 @@ public struct AzureStorage {
         }
         let endpoint = "/\(containerName)/\(blobName)?comp=block&blockid=\(encodedID)"
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
-        return execute(.PUT, url: url, body: data, params: [
-            ("comp", "block"),
-            ("blockid", blockID)
-        ]).map { response -> String? in
+        return execute(.PUT, url: url, body: data).map { response -> String? in
             if (response.status != .created) {
                 return nil
             }
@@ -131,13 +112,9 @@ public struct AzureStorage {
         guard let data = try? encoder.encode(entity, withRootKey: "BlockList") else {
             return application.eventLoopGroup.future(error: Abort(.internalServerError))
         }
-        let str = String(data: data, encoding: .utf8)
-        print("XML:\n\(String(describing: str))")
         let endpoint = "/\(containerName)/\(blobName)?comp=blocklist"
         let url = URI(string: "\(configuration.blobEndpoint.absoluteString)\(endpoint)")
-        return execute(.PUT, url: url, body: Array(data), params: [
-            ("comp", "blocklist")
-        ]).map { response -> ClientResponse in
+        return execute(.PUT, url: url, body: Array(data)).map { response -> ClientResponse in
             response
         }
     }

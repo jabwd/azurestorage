@@ -37,21 +37,19 @@ extension String {
 struct StorageAuthorization {
     let method: HTTPMethod
     let headers: HTTPHeaders
-    let queryParams: [(String, String)]
     let url: URI
     let configuration: StorageConfiguration
 
-    init(_ method: HTTPMethod, headers: HTTPHeaders, queryParams: [(String, String)], url: URI, config: StorageConfiguration) {
+    init(_ method: HTTPMethod, headers: HTTPHeaders, url: URI, config: StorageConfiguration) {
         self.method = method
         self.headers = headers
-        self.queryParams = queryParams
         self.url = url
         self.configuration = config
     }
 
     
     var signature: String {
-        return generateSignature(self.method, headers: self.headers, queryParams: self.queryParams, uri: self.url, configuration: self.configuration)
+        return generateSignature(self.method, headers: self.headers, uri: self.url, configuration: self.configuration)
     }
 
     var headerValue: String {
@@ -62,7 +60,6 @@ struct StorageAuthorization {
 fileprivate func generateSignature(
     _ method: HTTPMethod,
     headers: HTTPHeaders,
-    queryParams: [(String, String)] = [],
     uri: URI,
     configuration: StorageConfiguration
 ) -> String {
@@ -95,55 +92,17 @@ fileprivate func generateSignature(
     }
 
     stringToSign.append("/\(configuration.accountName)\(uri.path)")
-    /* if let params = uri.query?.queryParameters {
+    if let params = uri.query?.queryParameters {
         let sortedParams = params.sorted { (lh, rh) -> Bool in
             lh.key.compare(rh.key) == .orderedAscending
         }
         for param in sortedParams {
-            stringToSign.append("\n\(param.key):\(param.value)")
-        }
-    } */
-    if queryParams.count > 0 {
-        let sortedParams = queryParams.sorted { (lh, rh) -> Bool in
-            lh.0.compare(rh.0) == .orderedAscending
-        }
-        for param in sortedParams {
-            stringToSign.append("\n\(param.0):\(param.1)")
+            guard let value = param.value.removingPercentEncoding else {
+                continue
+            }
+            stringToSign.append("\n\(param.key):\(value)")
         }
     }
-    print("String to sign:\n\(stringToSign)")
-    print("end")
     let key = SymmetricKey(data: Data(base64Encoded: configuration.sharedKey)!)
     return Data(HMAC<SHA256>.authenticationCode(for: stringToSign.data(using: .utf8)!, using: key)).base64EncodedString()
-}
-
-public extension CharacterSet {
-    static let urlQueryParameterAllowed = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&?"))
-
-    static let urlQueryDenied           = CharacterSet.urlQueryAllowed.inverted()
-    static let urlQueryKeyValueDenied   = CharacterSet.urlQueryParameterAllowed.inverted()
-    static let urlPathDenied            = CharacterSet.urlPathAllowed.inverted()
-    static let urlFragmentDenied        = CharacterSet.urlFragmentAllowed.inverted()
-    static let urlHostDenied            = CharacterSet.urlHostAllowed.inverted()
-
-    static let urlDenied                = CharacterSet.urlQueryDenied
-        .union(.urlQueryKeyValueDenied)
-        .union(.urlPathDenied)
-        .union(.urlFragmentDenied)
-        .union(.urlHostDenied)
-
-
-    func inverted() -> CharacterSet {
-        var copy = self
-        copy.invert()
-        return copy
-    }
-}
-
-
-
-public extension String {
-    func urlEncoded(denying deniedCharacters: CharacterSet = .urlDenied) -> String? {
-        return addingPercentEncoding(withAllowedCharacters: deniedCharacters.inverted())
-    }
 }
