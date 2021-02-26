@@ -6,7 +6,7 @@
 //
 
 #if os(Linux)
-import GLibc
+import Glibc
 #else
 import Darwin
 #endif

@@ -55,10 +55,10 @@ fileprivate final class DownloadSession: HTTPClientResponseDelegate {
         return task.eventLoop.makeSucceededFuture(())
     }
 
-    func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Int {
+    func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Vapor.Response {
         // this is called when the request is fully read, called once
         // this is where you return a result or throw any errors you require to propagate to the client
-        return count
+        return response
     }
 
     func didReceiveError(task: HTTPClient.Task<Response>, _ error: Error) {
@@ -89,7 +89,7 @@ public struct RemoteIO {
             headers: client.headers,
             body: client.body.map { .byteBuffer($0) }
         )
-        self.request.application.http.client.shared.execute(
+        _ = self.request.application.http.client.shared.execute(
             request: request,
             delegate: downloadSession
         )

@@ -18,16 +18,6 @@ public extension Application {
     }
 }
 
-public extension AzureStorage {
-    func use(_ storeConfiguration: StorageConfiguration) {
-        application.azureStorageConfiguration = storeConfiguration
-    }
-
-    func use(_ connectionString: String) throws {
-        application.azureStorageConfiguration = try StorageConfiguration(connectionString)
-    }
-}
-
 struct StorageConfigurationKey: StorageKey {
     typealias Value = StorageConfiguration
 }

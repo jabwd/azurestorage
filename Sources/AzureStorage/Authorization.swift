@@ -90,6 +90,7 @@ fileprivate func generateSignature(
         stringToSign.appendWithNewLine("\(header.0.lowercased()):\(header.1)")
     }
 
+    // TODO: I probably have to remove percent encoding from the path variable here?
     stringToSign.append("/\(configuration.accountName)\(uri.path)")
     if let params = uri.query?.queryParameters {
         let sortedParams = params.sorted { (lh, rh) -> Bool in

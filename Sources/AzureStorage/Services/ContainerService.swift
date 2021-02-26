@@ -15,22 +15,20 @@ public final class ContainerService {
         self.storage = storage
     }
 
-    func list() -> EventLoopFuture<[Container]> {
-        let app = storage.application
+    func list(on client: Client) -> EventLoopFuture<[Container]> {
         let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/?comp=list")
-        return storage.execute(.GET, url: url).flatMap { response -> EventLoopFuture<[Container]> in
+        return storage.execute(.GET, url: url, on: client).flatMap { response -> EventLoopFuture<[Container]> in
             guard var body = response.body, response.status == .ok else {
-                app.logger.critical("List containers failed \(response)")
-                return app.client.eventLoop.makeFailedFuture(ContainerError.listFailed)
+                return client.eventLoop.makeFailedFuture(ContainerError.listFailed)
             }
             let data = body.readData(length: body.readableBytes) ?? Data()
             let decoder = XMLDecoder()
             do {
                 let response = try decoder.decode(ContainersEnumerationResultsEntity.self, from: data)
                 let containers = response.containers.list.map { Container($0) }
-                return app.client.eventLoop.makeSucceededFuture(containers)
+                return client.eventLoop.makeSucceededFuture(containers)
             } catch {
-                return app.client.eventLoop.makeFailedFuture(error)
+                return client.eventLoop.makeFailedFuture(error)
             }
         }
     }

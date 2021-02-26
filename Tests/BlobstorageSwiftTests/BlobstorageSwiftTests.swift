@@ -20,7 +20,7 @@ final class BlobstorageSwiftTests: XCTestCase {
     let app: Application = Application(.testing)
 
     override func setUp() {
-        app.azureStorage.use(.developmentConfiguration)
+        app.azureStorageConfiguration = .developmentConfiguration
     }
 
     override func tearDown() {
@@ -81,7 +81,7 @@ final class BlobstorageSwiftTests: XCTestCase {
         let data = try! Data(contentsOf: URL(string: "file:///Users/jabwd/Developer/Triple/AzureStorage/README.md")!)
         let buff = Array(data)
         let blobName = "\(UUID().uuidString).md"
-        let blockFuture = app.blobStorage.uploadBlock("test", blobName: blobName, data: buff, mimeType: "text/plain").map { res -> String in
+        let blockFuture = app.blobStorage.uploadBlock("test", blobName: blobName, data: buff, on: app.client).map { res -> String in
             guard let blockID = res else {
                 XCTAssert(false, "Did not receive a blockID")
                 group.leave()
@@ -92,7 +92,7 @@ final class BlobstorageSwiftTests: XCTestCase {
 
         _ = blockFuture.map { blockID -> () in
             let list = [blockID]
-            _ = self.app.blobStorage.finalize("test", blobName: blobName, list: list, mimeType: "text/plain").map { (response) -> () in
+            _ = self.app.blobStorage.finalize("test", blobName: blobName, list: list, on: self.app.client).map { (response) -> () in
                 print("AZS Response: \(response)")
             }
             group.leave()
