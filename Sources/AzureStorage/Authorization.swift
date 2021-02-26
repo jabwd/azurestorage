@@ -34,25 +34,24 @@ extension String {
     }
 }
 
-struct StorageAuthorization {
+public struct StorageAuthorization {
     let method: HTTPMethod
     let headers: HTTPHeaders
     let url: URI
     let configuration: StorageConfiguration
 
-    init(_ method: HTTPMethod, headers: HTTPHeaders, url: URI, config: StorageConfiguration) {
+    public init(_ method: HTTPMethod, headers: HTTPHeaders, url: URI, config: StorageConfiguration) {
         self.method = method
         self.headers = headers
         self.url = url
         self.configuration = config
     }
 
-    
     var signature: String {
         return generateSignature(self.method, headers: self.headers, uri: self.url, configuration: self.configuration)
     }
 
-    var headerValue: String {
+    public var headerValue: String {
         return "SharedKey \(configuration.accountName):\(signature)"
     }
 }
