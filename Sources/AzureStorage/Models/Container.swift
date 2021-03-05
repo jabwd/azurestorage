@@ -10,7 +10,7 @@ import Foundation
 extension DateFormatter {
     static var xMSDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, d MMM yyyy HH:mm:ss z"
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
         formatter.timeZone = TimeZone.init(secondsFromGMT: 0)
         return formatter
     }()
