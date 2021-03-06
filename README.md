@@ -5,40 +5,117 @@ This package is under development and not ready for production use.
 
 ## Features
 - [x] Listing containers in a given storage account
-- [ ] Listing blobs in a container
-- [ ] Container management (including metadata)
+- [x] Listing blobs in a container
+- [x] Basic container management
 - [ ] ACL Support
 - [ ] SAS support
-- [ ] CRUD operations for blobs in a container
+- [x] CRUD operations for blobs in a container
+- [ ] Improved error handling, especially XML errors returning from AZS
+- [ ] Azure Queue support. Basic support is WIP but I stopped due to project priorities shifting for now
 - [ ] Things I probably forgot about
 
 I don't have plans to support TableQueue or the File service at this point in time
 
 ## Getting started
 
-
 ### 1) Create an azure storage configuration on your app
 
 In your configure step add the following lines:
 
 ```swift
-let configuration = StoregConfiguration("{CONNECTION_STRING")
-application.azureStorageConfiguration = configuration
+app.azureStorageConfiguration = try StorageConfiguration(Environment.get("AZURE_STORAGE_CONNECTION_STRING")!)
+
 ```
 
 The connection string used can be found in your Azure Portal for your storage account.
 If you are making use of the storage emulator, like [Azurite](https://github.com/Azure/Azurite), you can use the development connection string:`UseDevelopmentStorage=true`
+Your production string would look similar to this: `DefaultEndpointsProtocol=https;AccountName={ACCOUNTNAME};AccountKey={KEY};EndpointSuffix=core.windows.net`
 
-### 2) Use an instance of AzureStorage in your eventLoop
+### 2) Creating containers
 
 To access an instance of azure storage you simply retrieve the service from your app, e.g.:
 
 ```swift
 func someGetRequest(_ req: Request) throws -> HTTPStatus {
-    _ = req.application.azureStorage.listContainers().map { containers -> () in
-      // Do something with the listing of containers
+    _ = req.application.blobContainers.createIfNotExists("testContainer").whenSucceeded { _ in 
+        // do your thing :)
     }
     throw Abort(.notImplemented)
+}
+```
+
+### 3) Uploading blobs
+
+Uploading works through a serious of blocks that all contain their own IDs, this library will return a blockID
+on every succesful upload. The upload then can be finilaized by providing a list of blockIDs in a correct order.
+You can technically create an async upload that will use out of order blocks, but providing them in the correct order
+to reconstruct the file you wanted to upload is your responsibility.
+
+Example:
+
+```swift
+func uploadBlock(_ req: Request) throws -> HTTPStatus {
+    guard let uploadID = UUID(uuidString: req.parameters.get("id") ?? "") else {
+        throw Abort(.badRequest)
+    }
+    return Upload.find(uploadID, on: req.db)
+        .unwrap(or: Abort(.notFound))
+        .flatMap { upload -> EventLoopFuture<HTTPStatus> in
+            req.logger.info("Upload found, reading blob from body")
+            return req.body.collect(max: MAX_FILESIZE).flatMap { data -> EventLoopFuture<HTTPStatus> in
+                guard let data = data else {
+                    return req.eventLoop.makeFailedFuture(Abort(.badRequest))
+                }
+                guard let buff = data.getBytes(at: 0, length: data.readableBytes) else {
+                    return req.eventLoop.makeFailedFuture(Abort(.badRequest))
+                }
+                req.logger.info("Got uploaded body: \(buff.count)")
+                return req.application.blobStorage.uploadBlock(
+                    Environment.value(for: .containerName),
+                    blobName: upload.blobName.uuidString,
+                    data: buff,
+                    on: req.client
+                ).flatMap { blockID -> EventLoopFuture<HTTPStatus> in
+                    guard let blockID = blockID else {
+                        return req.eventLoop.makeFailedFuture(UploadError.createBlockFailed)
+                    }
+                    req.logger.info("BlockID created \(blockID)")
+                    upload.bytesWritten += buff.count
+                    upload.blockIDs.append(blockID)
+                    return upload.save(on: req.db).map { _ -> HTTPStatus in
+                        .created
+                    }
+                }
+            }
+    }
+}
+
+func finalizeUpload(_ req: Request) throws -> HTTPStatus {
+    guard let uploadID = UUID(uuidString: req.parameters.get("id") ?? "") else {
+        throw Abort(.badRequest)
+    }
+    return Upload.find(uploadID, on: req.db).unwrap(or: Abort(.notFound)).flatMap { upload -> EventLoopFuture<UploadEntity.FinalizeResponse> in
+        guard upload.fileSize == upload.bytesWritten else {
+            return req.eventLoop.makeFailedFuture(Abort(
+                .custom(
+                    code: HTTPStatus.badRequest.code,
+                    reasonPhrase: "Not enough bytes to complete upload, did you miss uploading some blocks?"
+                )
+            ))
+        }
+        req.logger.info("Found upload, sending blockIDs to blobstorage…")
+        return req.application.blobStorage.finalize(
+            Environment.value(for: .containerName),
+            blobName: upload.blobName.uuidString,
+            list: upload.blockIDs,
+            on: req.client
+        ).flatMap { response -> EventLoopFuture<UploadEntity.FinalizeResponse> in
+            if response.status != .created {
+                return req.eventLoop.makeFailedFuture(UploadError.createBlockFailed)
+            }
+            // Be happy with a new blob in azure!
+        }
+    }
 }
 ```
 

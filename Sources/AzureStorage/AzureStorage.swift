@@ -23,6 +23,11 @@ public struct AzureStorage {
         return client.send(method, headers: headers, to: url) { req -> () in
             if let body = body {
                 req.headers.add(name: "Content-Length", value: "\(body.count)")
+                // The content type can probably be removed, I haven't tested this thoroughly
+                // but azure seems to ignore this header alltogether
+                // and setting the content-type semes to be an action done after the fact
+                // I have observed similar behaviour in the .NET implementation of AZS
+                // where it ignores this header alltogether and just executes 2 api calls to perform this action
                 req.headers.add(name: "Content-Type", value: "application/octet-stream")
                 req.body = ByteBuffer(bytes: body)
             }
