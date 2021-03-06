@@ -5,6 +5,8 @@
 //
 
 struct AZS {
+    /// The version of AZS to use, this version has been tested with this code
+    /// and seems to work well for now. Any earlier versions could break on assumptions made elsewhere
     static let version: String = "2019-07-07"
 
     static let canonicalPrefix = "x-ms"

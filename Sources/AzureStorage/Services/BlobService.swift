@@ -16,10 +16,6 @@ public final class BlobService {
         self.storage = storage
     }
 
-    public func list(_ container: Container) throws -> EventLoopFuture<[Blob]> {
-        throw BlobError.notImplemented
-    }
-
     public func list(_ name: String, on client: Client) -> EventLoopFuture<[Blob]> {
         let endpoint = "/\(name)?restype=container&comp=list"
         let blobEndpoint = storage.configuration.blobEndpoint.absoluteString
@@ -36,7 +32,6 @@ public final class BlobService {
                 let blobs = response.blobs.list.map { Blob($0) }
                 return blobs
             } catch {
-                // self.storage.application.logger.critical("Blob Error: \(error)")
             }
             return []
         }
@@ -45,7 +40,6 @@ public final class BlobService {
     public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
         let endpoint = "/\(containerName)/\(blobName)"
         let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
-        print("Going to execute stuff now")
         return storage.execute(.GET, url: url, on: client)
     }
 
