@@ -6,6 +6,6 @@
 //
 
 public enum BlobError: Error {
-    case unknown(String)
-    case notImplemented
+  case unknown(String)
+  case notImplemented
 }

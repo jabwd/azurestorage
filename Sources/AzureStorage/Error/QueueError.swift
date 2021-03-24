@@ -6,8 +6,8 @@
 //
 
 public enum QueueError: Error {
-    case invalidQueueName
-    case operationFailed
-    case zeroExpirationTime
-    case unknown(String)
+  case invalidQueueName
+  case operationFailed
+  case zeroExpirationTime
+  case unknown(String)
 }

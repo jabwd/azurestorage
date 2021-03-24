@@ -6,6 +6,21 @@ import Foundation
 import XMLParsing
 
 public struct AzureStorage {
+  /// The version of AZS to use, this version has been tested with this code
+  /// and seems to work well for now. Any earlier versions could break on assumptions made elsewhere
+  public static let version: String = "2019-07-07"
+
+  /// The prefix used for all canonical headers meant for the Azure Storage API `x-ms-{HEADER}`
+  public static let canonicalPrefix = "x-ms"
+
+  /// The date header value needs to be within 15 minutes of the current time of the request being
+  /// handled by the blobstorage server
+  public static let dateHeader = "x-ms-date"
+
+  /// This header indicates some specific quirks on the protocol itself, this project currently
+  /// only aims to be compatible with the latest few versions
+  public static let versionHeader = "x-ms-version"
+
   let configuration: StorageConfiguration
 
   init(_ app: Application) {
@@ -17,8 +32,8 @@ public struct AzureStorage {
 
   public func execute(_ method: HTTPMethod, url: URI, body: [UInt8]? = nil, on client: Client) -> EventLoopFuture<ClientResponse> {
     let headers = HTTPHeaders([
-      (AZS.dateHeader, "\(Date().xMSDateFormat)"),
-      (AZS.versionHeader, AZS.version),
+      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
+      (AzureStorage.versionHeader, AzureStorage.version),
     ])
     return client.send(method, headers: headers, to: url) { req -> () in
       if let body = body {

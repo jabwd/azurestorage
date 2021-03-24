@@ -12,7 +12,7 @@ public enum ContainerError: AbortError {
   case deleteFailed(_ container: String, error: ErrorEntity?)
   case createFailed(_ container: String, error: ErrorEntity?)
   case unknownError(_ container: String, message: String?)
-
+  
   public var reason: String {
     switch self {
     case .listFailed:
@@ -28,11 +28,13 @@ public enum ContainerError: AbortError {
       }
       return "Error deleting container \(container): unknown reason"
     case .unknownError(let container, let message):
-      return "Unknown error with container \(container): \(message)"
+      if let errorMessage = message {
+        return "Error with container `\(container)`: \(errorMessage)"
+      }
+      return "Unknown error with container \(container)"
     }
-
   }
-
+  
   public var status: HTTPStatus {
     switch self {
     case .listFailed:
