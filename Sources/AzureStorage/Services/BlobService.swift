@@ -11,11 +11,11 @@ import Foundation
 
 public final class BlobService {
   private let storage: AzureStorage
-  
+
   internal init(_ storage: AzureStorage) {
     self.storage = storage
   }
-  
+
   public func list(_ name: String, on client: Client) -> EventLoopFuture<[Blob]> {
     let endpoint = "/\(name)?restype=container&comp=list"
     let blobEndpoint = storage.configuration.blobEndpoint.absoluteString
@@ -35,6 +35,47 @@ public final class BlobService {
       }
       return []
     }
+  }
+
+
+  /// Returns a Response object that will be written to asynchronously when new data is available
+  /// - Parameters:
+  ///   - blob: Blob name to search for
+  ///   - container: Container name to search blob in
+  ///   - fileName: Filename to add to the response headers in case a different filename is desired
+  ///   - req: Vapor.Request object (mostly for creating a HTTPClient instance on the right eventLoop)
+  public func stream(
+    blob: String,
+    container: String,
+    fileName: String? = nil,
+    with req: Request
+  ) throws -> Response {
+    let endpoint = "/\(container)/\(blob)"
+    let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
+
+    var headers = HTTPHeaders([
+      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
+      (AzureStorage.versionHeader, AzureStorage.version),
+    ])
+    var status: HTTPStatus = .ok
+    if req.headers.contains(name: .range) {
+      headers.replaceOrAdd(name: .range, value: req.headers.first(name: .range) ?? "")
+      status = .partialContent
+    }
+    let authorization = StorageAuthorization(.GET, headers: headers, url: url, config: storage.configuration)
+    headers.add(name: "Authorization", value: authorization.headerValue)
+    let request = try HTTPClient.Request(url: url.string, method: .GET, headers: headers)
+    var responseHeaders = HTTPHeaders([])
+    if let fileName = fileName {
+      responseHeaders.replaceOrAdd(name: "Content-Disposition", value: "inline; filename=\"\(fileName)\"")
+    }
+    let response = Response(status: status, headers: responseHeaders)
+    let httpClient = req.application.http.client.shared
+    response.body = Response.Body.init(stream: { streamWriter in
+      let delegate = StreamingResponseDelegate(writer: streamWriter)
+      _ = httpClient.execute(request: request, delegate: delegate, eventLoop: .delegate(on: req.eventLoop))
+    })
+    return response
   }
   
   public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
