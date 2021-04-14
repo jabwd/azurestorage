@@ -8,7 +8,7 @@ This package is under development and not ready for production use.
 - [x] Listing blobs in a container
 - [x] Basic container management
 - [x] Async blob download
-- [x] Safari MP4 support (Working on Range headers and other requirements for safari)
+- [x] Safari MP4 support
 - [ ] ACL Support
 - [ ] SAS support
 - [x] CRUD operations for blobs in a container
@@ -130,13 +130,12 @@ The read method will return a promise witha ClientRespones, of which the body ca
 ### 5) Downloading blobs asynchronously
 This is mostly useful when you're trying to proxy certain things of blobstorage through your vapor backend, and don't want users to access blobstorage URLs directly. Additionally this has less of a performance and memory impact than asynhcronous downloads for responding directly to users.
 ```swift
-try! req.application.blobStorage.stream(
+let provisionalResponsePromise = try! req.application.blobStorage.stream(
   blob: blobName,
   container: containerName,
   fileName: file.name, // Optionally: A filename, this will be attached in a header to ignore blob specific names
   with: req
-) -> Response
+)
 ```
-TBD: This should technically return a future response result, but this is work in progress. The download functions asynchronously but errors are not handled in a pretty manner right now. Responses will always contain a 200 status code.
 
 More and better documentation including more api calls TBD. :)

@@ -76,13 +76,13 @@ public final class BlobService {
     _ = httpClient.execute(request: request, delegate: delegate, eventLoop: .delegate(on: req.eventLoop))
     return promise.futureResult
   }
-  
+
   public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
     let endpoint = "/\(containerName)/\(blobName)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
     return storage.execute(.GET, url: url, on: client)
   }
-  
+
   public func delete(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<Bool> {
     let endpoint = "/\(containerName)/\(blobName)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
