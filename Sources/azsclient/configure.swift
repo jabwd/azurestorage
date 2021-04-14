@@ -28,7 +28,7 @@ public func routes(_ app: Application) throws {
     }
   }
 
-  app.on(.GET, "downloadv2") { req -> Response in
+  app.on(.GET, "downloadv2") { req -> EventLoopFuture<Response> in
     return try req.application.blobStorage.stream(blob: "testdownload", container: "azurestoragetest", fileName: "spacemarine.mp4", with: req)
   }
 

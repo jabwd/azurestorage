@@ -49,7 +49,7 @@ public final class BlobService {
     container: String,
     fileName: String? = nil,
     with req: Request
-  ) throws -> Response {
+  ) throws -> EventLoopFuture<Response> {
     let endpoint = "/\(container)/\(blob)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
 
@@ -69,13 +69,12 @@ public final class BlobService {
     if let fileName = fileName {
       responseHeaders.replaceOrAdd(name: "Content-Disposition", value: "inline; filename=\"\(fileName)\"")
     }
-    let response = Response(status: status, headers: responseHeaders)
+    let provisionalResponse = Response(status: status, headers: responseHeaders)
+    let promise = req.eventLoop.makePromise(of: Response.self)
     let httpClient = req.application.http.client.shared
-    response.body = Response.Body.init(stream: { streamWriter in
-      let delegate = StreamingResponseDelegate(writer: streamWriter)
-      _ = httpClient.execute(request: request, delegate: delegate, eventLoop: .delegate(on: req.eventLoop))
-    })
-    return response
+    let delegate = StreamingResponseDelegate(response: provisionalResponse, responsePromise: promise)
+    _ = httpClient.execute(request: request, delegate: delegate, eventLoop: .delegate(on: req.eventLoop))
+    return promise.futureResult
   }
   
   public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
