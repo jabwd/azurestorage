@@ -48,28 +48,39 @@ public final class BlobService {
     blob: String,
     container: String,
     fileName: String? = nil,
+    headers: HTTPHeaders? = nil,
     with req: Request
   ) throws -> EventLoopFuture<Response> {
     let endpoint = "/\(container)/\(blob)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
 
-    var headers = HTTPHeaders([
+    var requestHeaders = HTTPHeaders([
       (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
       (AzureStorage.versionHeader, AzureStorage.version),
     ])
+
+    // Support range header requests, add partialContent status if we only requested a number of bytes
     var status: HTTPStatus = .ok
     if req.headers.contains(name: .range) {
-      headers.replaceOrAdd(name: .range, value: req.headers.first(name: .range) ?? "")
+      requestHeaders.replaceOrAdd(name: .range, value: req.headers.first(name: .range) ?? "")
       status = .partialContent
     }
-    let authorization = StorageAuthorization(.GET, headers: headers, url: url, config: storage.configuration)
-    headers.add(name: "Authorization", value: authorization.headerValue)
-    let request = try HTTPClient.Request(url: url.string, method: .GET, headers: headers)
+
+    let authorization = StorageAuthorization(.GET, headers: requestHeaders, url: url, config: storage.configuration)
+    requestHeaders.add(name: "Authorization", value: authorization.headerValue)
+    let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
+
+    // Generate the provisional response, which will be modified later once AZS
+    // comes back to us with at least the headers response (this is done in the streaming delegate)
     var responseHeaders = HTTPHeaders([])
     if let fileName = fileName {
       responseHeaders.replaceOrAdd(name: "Content-Disposition", value: "inline; filename=\"\(fileName)\"")
     }
+    if let headers = headers {
+      responseHeaders.add(contentsOf: headers)
+    }
     let provisionalResponse = Response(status: status, headers: responseHeaders)
+
     let promise = req.eventLoop.makePromise(of: Response.self)
     let httpClient = req.application.http.client.shared
     let delegate = StreamingResponseDelegate(response: provisionalResponse, responsePromise: promise)
