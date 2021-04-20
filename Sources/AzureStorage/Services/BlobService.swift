@@ -101,22 +101,27 @@ public final class BlobService {
       response.status == .accepted
     }
   }
-  
-  public func uploadBlock(_ containerName: String, blobName: String, data: [UInt8], on client: Client) -> EventLoopFuture<String?> {
+
+  public func uploadBlock(_ container: String, blob: String, buffer: ByteBuffer, on client: Client) -> EventLoopFuture<String?> {
     guard let blockID = Data.random(bytes: 16)?.base64EncodedString() else {
       return client.eventLoop.future(error: StorageError.randomBytesExhausted)
     }
     guard let encodedID = blockID.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics) else {
       return client.eventLoop.future(error: Abort(.internalServerError))
     }
-    let endpoint = "/\(containerName)/\(blobName)?comp=block&blockid=\(encodedID)"
+    let endpoint = "/\(container)/\(blob)?comp=block&blockid=\(encodedID)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
-    return storage.execute(.PUT, url: url, body: data, on: client).map { response -> String? in
+    return storage.execute(.PUT, url: url, body: buffer, on: client).map { response -> String? in
       if (response.status != .created) {
         return nil
       }
       return blockID
     }
+  }
+
+  @available(*, deprecated, message: "Use buffer based uploadBlock instead")
+  public func uploadBlock(_ containerName: String, blobName: String, data: [UInt8], on client: Client) -> EventLoopFuture<String?> {
+    uploadBlock(containerName, blob: blobName, buffer: ByteBuffer(bytes: data), on: client)
   }
   
   public func finalize(_ containerName: String, blobName: String, list: [String], on client: Client) -> EventLoopFuture<ClientResponse> {
