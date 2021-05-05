@@ -56,7 +56,9 @@ public final class StreamingResponseDelegate: HTTPClientResponseDelegate {
     // is that we simply don't know what the client wants in extra response headers.
     // this is not a raw-proxy afterall. This might be a stupid way of doing it, I'm not sure
     // and I'm sure someone in future will hate me for this
-    provisionalRespones.headers.replaceOrAddIfExists(name: .contentType, value: head.headers.first(name: .contentType))
+    if provisionalRespones.headers.contains(name: .contentType) == false {
+      provisionalRespones.headers.replaceOrAddIfExists(name: .contentType, value: head.headers.first(name: .contentType))
+    }
     provisionalRespones.headers.replaceOrAddIfExists(name: .contentRange, value: head.headers.first(name: .contentRange))
     provisionalRespones.headers.replaceOrAddIfExists(name: .eTag, value: head.headers.first(name: .eTag))
     provisionalRespones.headers.replaceOrAddIfExists(name: .lastModified, value: head.headers.first(name: .lastModified))
