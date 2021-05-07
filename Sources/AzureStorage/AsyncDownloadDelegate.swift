@@ -11,16 +11,30 @@ import NIOHTTP1
 import NIO
 import Vapor
 
+public typealias AsyncDownloadCompletionHandler = () -> Void
+
 public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
   public typealias Response = Void
 
   public let filePath: String
   public let fileio: NonBlockingFileIO
   private var fileHandle: NIOFileHandle?
+  private var bufferBacklog: [ByteBuffer] = []
+  private var didReceiveEnd: Bool = false
+  private let completionHandler: AsyncDownloadCompletionHandler
 
-  public init(writingToPath filePath: String, fileio: NonBlockingFileIO) {
+  public init(writingToPath filePath: String, fileio: NonBlockingFileIO, completion: @escaping AsyncDownloadCompletionHandler) {
     self.filePath = filePath
     self.fileio = fileio
+    self.completionHandler = completion
+  }
+
+  deinit {
+    if let fileHandle = fileHandle {
+      try? fileHandle.close()
+      self.fileHandle = nil
+      self.completionHandler()
+    }
   }
 
   public func didReceiveHead(
@@ -30,11 +44,36 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     // The only thing we need to do here is check whether the status code is valid
     // the rest of the header I don't care about right now
     if head.status == .ok {
-      return self.fileio.openFile(path: filePath, mode: .write, eventLoop: task.eventLoop).map { fileHandle in
+      return self.fileio.openFile(path: filePath, mode: .write, flags: .allowFileCreation(), eventLoop: task.eventLoop).flatMap { fileHandle in
         self.fileHandle = fileHandle
+
+        // If before writing the entire backlog out we already received the end of the request
+        // we have to close here when this is done doing its work, otherwise it has to be done later
+        let shouldClose = self.didReceiveEnd
+        return self.writeBacklog(on: task.eventLoop).map { _ in
+          if shouldClose {
+            try? self.fileHandle?.close()
+            self.fileHandle = nil
+          }
+        }
       }
     }
     return task.eventLoop.makeFailedFuture(Abort(head.status, reason: "Download failed with status"))
+  }
+
+  private func writeBacklog(on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    guard let fileHandle = self.fileHandle else {
+      return eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "No filehandle to start writing with regarding backlog"))
+    }
+    var buffers: [EventLoopFuture<Void>] = []
+    for buffer in bufferBacklog {
+      let future = self.fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: eventLoop)
+      buffers.append(future)
+    }
+    return buffers.flatten(on: eventLoop).map { _ in
+      // Free up any memory we might still be using :), we want our peaks to be low
+      buffers = []
+    }
   }
 
   public func didReceiveBodyPart(
@@ -42,30 +81,20 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     _ buffer: ByteBuffer
   ) -> EventLoopFuture<Void> {
     guard let fileHandle = self.fileHandle else {
-      return task.eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "No filehandle for downloading to \(filePath)"))
+      if didReceiveEnd {
+        fatalError("Received body part after request closed, this should never happen")
+      }
+      bufferBacklog.append(buffer)
+      return task.eventLoop.makeSucceededFuture(())
     }
     return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop)
   }
 
   public func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Response {
-    // this is called when the request is fully read, called once
-    // this is where you return a result or throw any errors you require to propagate to the client
-    //
-    do {
-      try self.fileHandle?.close()
-      self.fileHandle = nil
-    } catch {
-      print("\(error)")
-    }
+    didReceiveEnd = true
   }
 
   public func didReceiveError(task: HTTPClient.Task<Response>, _ error: Error) {
-    do {
-      try self.fileHandle?.close()
-      self.fileHandle = nil
-    } catch {
-      print("\(error)")
-    }
-    print("\(error)")
+    didReceiveEnd = true
   }
 }

@@ -35,8 +35,13 @@ public func routes(_ app: Application) throws {
     ]), with: req)
   }
 
-  app.on(.GET, "downloadtofile") { req -> StaticString in
-    return "Fail"
+  app.on(.GET, "downloadtofile") { req -> EventLoopFuture<HTTPStatus> in
+    let path = "/tmp/out.mp4"
+    print("Downloading")
+    return try req.application.blobStorage.downloadTo(filePath: path, container: "azurestoragetest", blob: "testdownload", fileio: app.fileio, client: app.http.client.shared, on: req.eventLoop).map({ _ in
+      print("Downloading done")
+      return .ok
+    })
   }
 
   app.get("shutdown") { req -> HTTPStatus in

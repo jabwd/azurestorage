@@ -110,8 +110,14 @@ public final class BlobService {
     let authorization = StorageAuthorization(.GET, headers: requestHeaders, url: url, config: storage.configuration)
     requestHeaders.add(name: "Authorization", value: authorization.headerValue)
     let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
-    let downloadDelegate = AsyncDownloadDelegate(writingToPath: filePath, fileio: fileio)
-    return client.execute(request: request, delegate: downloadDelegate, eventLoop: .delegate(on: eventLoop)).futureResult
+    let promise = eventLoop.makePromise(of: Void.self)
+    let downloadDelegate = AsyncDownloadDelegate(writingToPath: filePath, fileio: fileio) {
+      promise.completeWith(.success(()))
+    }
+    return [
+      client.execute(request: request, delegate: downloadDelegate, eventLoop: .delegate(on: eventLoop)).futureResult,
+      promise.futureResult
+    ].flatten(on: eventLoop)
   }
 
   public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
