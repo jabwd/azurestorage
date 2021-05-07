@@ -29,7 +29,14 @@ public func routes(_ app: Application) throws {
   }
 
   app.on(.GET, "downloadv2") { req -> EventLoopFuture<Response> in
-    return try req.application.blobStorage.stream(blob: "testdownload", container: "azurestoragetest", fileName: "spacemarine.mp4", with: req)
+    return try req.application.blobStorage.stream(blob: "testdownload", container: "azurestoragetest", fileName: "spacemarine.mp4", headers: HTTPHeaders([
+      ("content-type", "audio/wav"),
+      ("kanker", "test header krijg de tyfus")
+    ]), with: req)
+  }
+
+  app.on(.GET, "downloadtofile") { req -> StaticString in
+    return "Fail"
   }
 
   app.get("shutdown") { req -> HTTPStatus in

@@ -88,6 +88,32 @@ public final class BlobService {
     return promise.futureResult
   }
 
+  /// Attempts to download a blob to the given file destination
+  /// - Parameters:
+  ///   - filePath: A local writable path to save the file to, this code creates the file but does not delete it upon error
+  ///   - container: Blob container
+  ///   - blob: Blob name to download
+  ///   - fileio: A instance of FileIO (either from request on application etc.)
+  ///   - client: A HTTPClient to use for network requests
+  ///   - eventLoop: The eventLoop to use for all http traffic
+  /// - Throws: -
+  /// - Returns: Succeeded or failed futuer
+  public func downloadTo(filePath: String, container: String, blob: String, fileio: NonBlockingFileIO, client: HTTPClient, on eventLoop: EventLoop) throws -> EventLoopFuture<Void> {
+    let endpoint = "/\(container)/\(blob)"
+    let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
+
+    var requestHeaders = HTTPHeaders([
+      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
+      (AzureStorage.versionHeader, AzureStorage.version),
+    ])
+
+    let authorization = StorageAuthorization(.GET, headers: requestHeaders, url: url, config: storage.configuration)
+    requestHeaders.add(name: "Authorization", value: authorization.headerValue)
+    let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
+    let downloadDelegate = AsyncDownloadDelegate(writingToPath: filePath, fileio: fileio)
+    return client.execute(request: request, delegate: downloadDelegate, eventLoop: .delegate(on: eventLoop)).futureResult
+  }
+
   public func read(_ containerName: String, blobName: String, on client: Client) -> EventLoopFuture<ClientResponse> {
     let endpoint = "/\(containerName)/\(blobName)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
