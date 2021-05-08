@@ -22,19 +22,14 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
   private var bufferBacklog: [ByteBuffer] = []
   private var didReceiveEnd: Bool = false
   private let completionHandler: AsyncDownloadCompletionHandler
+  private var bufCount: Int = 0
+  private var lastWrittenBuffer: Int = 0
+  private var lastBuffer: Int = 0
 
   public init(writingToPath filePath: String, fileio: NonBlockingFileIO, completion: @escaping AsyncDownloadCompletionHandler) {
     self.filePath = filePath
     self.fileio = fileio
     self.completionHandler = completion
-  }
-
-  deinit {
-    if let fileHandle = fileHandle {
-      try? fileHandle.close()
-      self.fileHandle = nil
-      self.completionHandler()
-    }
   }
 
   public func didReceiveHead(
@@ -80,6 +75,7 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     task: HTTPClient.Task<Response>,
     _ buffer: ByteBuffer
   ) -> EventLoopFuture<Void> {
+    bufCount += 1
     guard let fileHandle = self.fileHandle else {
       if didReceiveEnd {
         fatalError("Received body part after request closed, this should never happen")
@@ -87,11 +83,27 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
       bufferBacklog.append(buffer)
       return task.eventLoop.makeSucceededFuture(())
     }
-    return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop)
+    let writingTag = bufCount
+    return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop).map { _ in
+      if writingTag == self.lastBuffer && self.didReceiveEnd {
+        try? self.fileHandle?.close()
+        self.fileHandle = nil
+        self.lastWrittenBuffer = writingTag
+        self.completionHandler()
+      }
+    }
   }
 
   public func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Response {
+    lastBuffer = bufCount
     didReceiveEnd = true
+    if lastWrittenBuffer == bufCount {
+      if let fileHandle = self.fileHandle {
+        try? fileHandle.close()
+        self.fileHandle = nil
+        completionHandler()
+      }
+    }
   }
 
   public func didReceiveError(task: HTTPClient.Task<Response>, _ error: Error) {
