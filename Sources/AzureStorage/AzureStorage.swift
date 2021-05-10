@@ -21,6 +21,8 @@ public struct AzureStorage {
   /// only aims to be compatible with the latest few versions
   public static let versionHeader = "x-ms-version"
 
+  public let logger = Logger(label: "azurestorage")
+
   let configuration: StorageConfiguration
 
   init(_ app: Application) {
