@@ -18,7 +18,7 @@ extension Array where Element == UInt8 {
   // with the dependency hell that library gives you right now
   // besides, /dev/random is good enough on modern OS' anyway.
   static func random(bytes: Int) -> [UInt8]? {
-    guard let fd = fopen("/dev/random", "r") else {
+    guard let fd = fopen("/dev/urandom", "r") else {
       return nil
     }
     defer { fclose(fd) }
