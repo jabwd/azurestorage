@@ -135,19 +135,17 @@ public final class BlobService {
   }
 
   public func uploadBlock(_ container: String, blob: String, buffer: ByteBuffer, on client: Client) -> EventLoopFuture<String?> {
-    storage.logger.info("Uploading block, generating random ID")
     guard let blockID = Data.random(bytes: 16)?.base64EncodedString() else {
       return client.eventLoop.future(error: StorageError.randomBytesExhausted)
     }
-    storage.logger.info("Random ID generated")
     guard let encodedID = blockID.addingPercentEncoding(withAllowedCharacters: CharacterSet.alphanumerics) else {
       return client.eventLoop.future(error: Abort(.internalServerError))
     }
     let endpoint = "/\(container)/\(blob)?comp=block&blockid=\(encodedID)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
-    storage.logger.info("Executing request")
+    storage.logger.trace("Uploading block \(blockID)")
     return storage.execute(.PUT, url: url, body: buffer, on: client).map { response -> String? in
-      self.storage.logger.info("Request executed")
+      self.storage.logger.trace("Finished uploading block \(blockID)")
       if (response.status != .created) {
         return nil
       }
