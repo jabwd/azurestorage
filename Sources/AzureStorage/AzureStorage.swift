@@ -32,24 +32,27 @@ public struct AzureStorage {
     self.configuration = configuration
   }
 
+  /// Executes an authorized request against the azure storage api
+  /// - Parameters:
+  ///   - method: `HTTPMethod` of the request
+  ///   - url: `URL` full URI endpoint to request against (either blobstorage / queue endpoint etc.)
+  ///   - body: `ByteBuffer` containing any HTTPBody data (if applicable)
+  ///   - client: `HTTPClient` to execute requests on (and its eventLoop)
+  /// - Returns: `ClientResponse`
   public func execute(_ method: HTTPMethod, url: URI, body: ByteBuffer? = nil, on client: Client) -> EventLoopFuture<ClientResponse> {
-    let headers = HTTPHeaders([
-      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
-      (AzureStorage.versionHeader, AzureStorage.version),
-    ])
+    let headers = HTTPHeaders.defaultAzureStorageHeaders
     return client.send(method, headers: headers, to: url) { req -> () in
       if let body = body {
         req.headers.add(name: "Content-Length", value: "\(body.readableBytes)")
         // The content type can probably be removed, I haven't tested this thoroughly
         // but azure seems to ignore this header alltogether
-        // and setting the content-type semes to be an action done after the fact
+        // and setting the content-type seems to be an action done after the fact
         // I have observed similar behaviour in the .NET implementation of AZS
         // where it ignores this header alltogether and just executes 2 api calls to perform this action
         req.headers.add(name: "Content-Type", value: "application/octet-stream")
         req.body = body
       }
-      let authorization = StorageAuthorization(method, headers: req.headers, url: url, config: configuration)
-      req.headers.add(name: "Authorization", value: authorization.headerValue)
+      req.headers.authorizeFor(method: method, url: url, config: configuration)
     }
   }
 

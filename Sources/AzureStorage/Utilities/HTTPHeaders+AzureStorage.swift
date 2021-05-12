@@ -1,60 +1,40 @@
 //
-//  Signature.swift
+//  HTTPHeaders+AzureStorage.swift
 //  
 //
-//  Created by Antwan van Houdt on 14/01/2021.
+//  Created by Antwan van Houdt on 12/05/2021.
 //
-//  Helper functions for generating a valid Authorization signature
-//  string for azure storage using a shared key
 
 import Vapor
 
-extension String {
-  mutating func appendWithNewLine(_ str: String?) {
-    guard let str = str else {
-      append("\n")
-      return
-    }
-    append("\(str)\n")
-  }
-  
-  var queryParameters: [(key: String, value: String)] {
-    let components = self.split(separator: "&")
-    var result: [(key: String, value: String)] = []
-    for component in components {
-      let separatorIdx = component.firstIndex { $0 == "=" }
-      guard let idx = separatorIdx else {
-        continue
-      }
-      let key = String(component[component.startIndex..<idx])
-      let value = String(component[component.index(after: idx)..<component.endIndex])
-      result.append((key, value))
-    }
-    return result
-  }
-}
+extension HTTPHeaders {
 
-@available(*, deprecated, message: "Use HTTPHeaders.authorizeFor instead")
-public struct StorageAuthorization {
-  let method: HTTPMethod
-  let headers: HTTPHeaders
-  let url: URI
-  let configuration: StorageConfiguration
-  
-  public init(_ method: HTTPMethod, headers: HTTPHeaders, url: URI, config: StorageConfiguration) {
-    self.method = method
-    self.headers = headers
-    self.url = url
-    self.configuration = config
+  /// By default all requests need to have a date (in as pecific format)
+  /// and version header attached, this static variable provides the default set for most requests
+  static var defaultAzureStorageHeaders: HTTPHeaders {
+    HTTPHeaders([
+      (AzureStorage.dateHeader, Date().xMSDateFormat),
+      (AzureStorage.versionHeader, AzureStorage.version),
+    ])
   }
-  
-  var signature: String {
-    return generateSignature(self.method, headers: self.headers, uri: self.url, configuration: self.configuration)
+
+
+  /// Adds the authorization headers to this instance of `HTTPHeaders`
+  /// - Parameters:
+  ///   - method: HTTPMethod used in the request
+  ///   - url: Destination URL
+  ///   - config: Azure storage configuration object
+  mutating func authorizeFor(
+    method: HTTPMethod,
+    url: URI,
+    config: StorageConfiguration
+  ) {
+    // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
+    // self.add(name: .authorization, value: authorization.headerValue)
+    let signature = generateSignature(method, headers: self, uri: url, configuration: config)
+    self.add(name: .authorization, value: "SharedKey \(signature)")
   }
-  
-  public var headerValue: String {
-    return "SharedKey \(configuration.accountName):\(signature)"
-  }
+
 }
 
 fileprivate func generateSignature(
@@ -73,7 +53,7 @@ fileprivate func generateSignature(
   canonicalizedHeaders = canonicalizedHeaders.sorted(by: { (lh, rh) -> Bool in
     lh.0.caseInsensitiveCompare(rh.0) == ComparisonResult.orderedAscending
   })
-  
+
   var stringToSign = "\(method)\n"
   stringToSign.appendWithNewLine(headers.first(name: "Content-Encoding"))
   stringToSign.appendWithNewLine(headers.first(name: "Content-Language"))
@@ -86,11 +66,11 @@ fileprivate func generateSignature(
   stringToSign.appendWithNewLine(headers.first(name: "If-None-Match"))
   stringToSign.appendWithNewLine(headers.first(name: "If-Unmodified-Since"))
   stringToSign.appendWithNewLine(headers.first(name: "Range"))
-  
+
   for header in canonicalizedHeaders {
     stringToSign.appendWithNewLine("\(header.0.lowercased()):\(header.1)")
   }
-  
+
   // TODO: I probably have to remove percent encoding from the path variable here?
   stringToSign.append("/\(configuration.accountName)\(uri.path)")
   if let params = uri.query?.queryParameters {

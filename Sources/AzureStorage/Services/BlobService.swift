@@ -37,7 +37,6 @@ public final class BlobService {
     }
   }
 
-
   /// Returns a Response object that will be written to asynchronously when new data is available
   /// - Parameters:
   ///   - blob: Blob name to search for
@@ -54,10 +53,7 @@ public final class BlobService {
     let endpoint = "/\(container)/\(blob)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
 
-    var requestHeaders = HTTPHeaders([
-      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
-      (AzureStorage.versionHeader, AzureStorage.version),
-    ])
+    var requestHeaders = HTTPHeaders.defaultAzureStorageHeaders
 
     // Support range header requests, add partialContent status if we only requested a number of bytes
     var status: HTTPStatus = .ok
@@ -66,8 +62,7 @@ public final class BlobService {
       status = .partialContent
     }
 
-    let authorization = StorageAuthorization(.GET, headers: requestHeaders, url: url, config: storage.configuration)
-    requestHeaders.add(name: "Authorization", value: authorization.headerValue)
+    requestHeaders.authorizeFor(method: .GET, url: url, config: storage.configuration)
     let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
 
     // Generate the provisional response, which will be modified later once AZS
@@ -102,13 +97,8 @@ public final class BlobService {
     let endpoint = "/\(container)/\(blob)"
     let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)\(endpoint)")
 
-    var requestHeaders = HTTPHeaders([
-      (AzureStorage.dateHeader, "\(Date().xMSDateFormat)"),
-      (AzureStorage.versionHeader, AzureStorage.version),
-    ])
-
-    let authorization = StorageAuthorization(.GET, headers: requestHeaders, url: url, config: storage.configuration)
-    requestHeaders.add(name: "Authorization", value: authorization.headerValue)
+    var requestHeaders = HTTPHeaders.defaultAzureStorageHeaders
+    requestHeaders.authorizeFor(method: .GET, url: url, config: storage.configuration)
     let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
     let promise = eventLoop.makePromise(of: Void.self)
     let downloadDelegate = AsyncDownloadDelegate(writingToPath: filePath, fileio: fileio) {
@@ -134,6 +124,13 @@ public final class BlobService {
     }
   }
 
+  /// Uploads a data block to azure storage
+  /// - Parameters:
+  ///   - container: Blob container to upload to
+  ///   - blob: Blob name to upload block for
+  ///   - buffer: `ByteBuffer` of (partial chunk of your finalized blob)
+  ///   - client: HTTP Client to use for executing requests
+  /// - Returns: Returns a `String` containing the blockID on success
   public func uploadBlock(_ container: String, blob: String, buffer: ByteBuffer, on client: Client) -> EventLoopFuture<String?> {
     guard let blockID = Data.random(bytes: 16)?.base64EncodedString() else {
       return client.eventLoop.future(error: StorageError.randomBytesExhausted)
@@ -151,11 +148,6 @@ public final class BlobService {
       }
       return blockID
     }
-  }
-
-  @available(*, deprecated, message: "Use buffer based uploadBlock instead")
-  public func uploadBlock(_ containerName: String, blobName: String, data: [UInt8], on client: Client) -> EventLoopFuture<String?> {
-    uploadBlock(containerName, blob: blobName, buffer: ByteBuffer(bytes: data), on: client)
   }
   
   public func finalize(_ containerName: String, blobName: String, list: [String], on client: Client) -> EventLoopFuture<ClientResponse> {
