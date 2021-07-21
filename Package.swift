@@ -14,6 +14,19 @@ let package = Package(
     .library(
       name: "AzureStorage",
       targets: ["AzureStorage"]),
+    .library(
+      name: "AzureStorageNIODriver",
+      targets: ["AzureStorageNIODriver"]
+    ),
+    .library(
+      name: "AzureStorageFoundationDriver",
+      targets: [
+        "AzureStorageFoundationDriver"
+    ]),
+    .library(
+      name: "AzureStorageCore",
+      targets: ["AzureStorageCore"]
+    ),
   ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.1"),
@@ -35,7 +48,26 @@ let package = Package(
         .product(name: "Vapor", package: "vapor"),
         .product(name: "AsyncHTTPClient", package: "async-http-client"),
         .product(name: "XMLParsing", package: "XMLParsing"),
+        "AzureStorageCore"
       ]),
+    .target(
+      name: "AzureStorageCore",
+      dependencies: [
+        .product(name: "XMLParsing", package: "XMLParsing"),
+      ]
+    ),
+    .target(
+      name: "AzureStorageNIODriver",
+      dependencies: [
+        .product(name: "AsyncHTTPClient", package: "async-http-client"),
+        "AzureStorageCore"
+      ]),
+    .target(
+      name: "AzureStorageFoundationDriver",
+      dependencies: [
+        "AzureStorageCore"
+      ]
+    ),
     .testTarget(
       name: "BlobstorageSwiftTests",
       dependencies: [
