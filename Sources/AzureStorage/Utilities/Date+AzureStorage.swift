@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension DateFormatter {
+extension DateFormatter {
   static var xMSDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
@@ -16,7 +16,7 @@ public extension DateFormatter {
   }()
 }
 
-public extension Date {
+extension Date {
   var xMSDateFormat: String {
     return DateFormatter.xMSDateFormatter.string(from: self)
   }

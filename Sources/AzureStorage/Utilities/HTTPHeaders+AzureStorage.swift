@@ -6,7 +6,6 @@
 //
 
 import Vapor
-import AzureStorageCore
 
 extension HTTPHeaders {
 
