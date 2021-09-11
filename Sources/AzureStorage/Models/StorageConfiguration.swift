@@ -10,10 +10,10 @@ import Vapor
 public extension Application {
   var azureStorageConfiguration: StorageConfiguration? {
     get {
-      self.storage[StorageConfigurationKey]
+      self.storage[StorageConfigurationKey.self]
     }
     set {
-      self.storage[StorageConfigurationKey] = newValue
+      self.storage[StorageConfigurationKey.self] = newValue
     }
   }
 }

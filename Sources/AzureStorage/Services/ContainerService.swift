@@ -75,6 +75,32 @@ public final class ContainerService {
     }
   }
 
+  public func create_v2(container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    guard let container = container.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+      return eventLoop.makeFailedFuture(BlobError.unknown("Unable to escape container name"))
+    }
+    let uri = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container)?restype=container")
+    let headers = HTTPHeaders.defaultAzureStorageHeaders
+    do {
+      let request = try HTTPClient.Request(url: uri.string, method: .PUT, headers: headers, body: nil)
+      return storage.httpClient.execute(request: request).hop(to: eventLoop).flatMap { response -> EventLoopFuture<Void> in
+        if response.status == .created {
+          return eventLoop.makeSucceededFuture(())
+        }
+        guard let error = response.azsError else {
+          return eventLoop.makeFailedFuture(
+            ContainerError.unknownError(container, message: "Unknown error: \(response.status)")
+          )
+        }
+        return eventLoop.makeFailedFuture(
+          ContainerError.createFailed(container, error: error)
+        )
+      }
+    } catch {
+      return eventLoop.makeFailedFuture(error)
+    }
+  }
+
   /// Attemps to delete a given container from the configured storage account
   /// - Parameters:
   ///   - container: The name of the container to delete (Should be URL safe)
