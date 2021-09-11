@@ -75,11 +75,8 @@ public final class ContainerService {
     }
   }
 
-  public func create_v2(container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
-    guard let container = container.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-      return eventLoop.makeFailedFuture(BlobError.unknown("Unable to escape container name"))
-    }
-    let uri = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container)?restype=container")
+  public func create_v2(container: ContainerName, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    let uri = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container.value)?restype=container")
     let headers = HTTPHeaders.defaultAzureStorageHeaders
     do {
       let request = try HTTPClient.Request(url: uri.string, method: .PUT, headers: headers, body: nil)
@@ -89,11 +86,11 @@ public final class ContainerService {
         }
         guard let error = response.azsError else {
           return eventLoop.makeFailedFuture(
-            ContainerError.unknownError(container, message: "Unknown error: \(response.status)")
+            ContainerError.unknownError(container.value, message: "Unknown error: \(response.status)")
           )
         }
         return eventLoop.makeFailedFuture(
-          ContainerError.createFailed(container, error: error)
+          ContainerError.createFailed(container.value, error: error)
         )
       }
     } catch {

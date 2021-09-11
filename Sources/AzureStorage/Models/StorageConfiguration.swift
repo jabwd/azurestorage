@@ -60,7 +60,7 @@ public struct StorageConfiguration: Equatable {
       tableEndpoint = queueEndpoint
       return
     }
-    
+
     guard let accountKey = kvStore["AccountKey"] else {
       throw StorageError.invalidConnectionString("Missing account key")
     }

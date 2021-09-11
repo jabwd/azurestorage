@@ -23,12 +23,15 @@ public struct AzureStorage {
 
   public let logger = Logger(label: "azurestorage")
 
+  public let httpClient: HTTPClient
+
   let configuration: StorageConfiguration
 
   init(_ app: Application) {
     guard let configuration = app.azureStorageConfiguration else {
       fatalError("Azure Storage configuration needs to be configured before using an AzureStorage instance")
     }
+    self.httpClient = HTTPClient(eventLoopGroupProvider: .shared(app.eventLoopGroup))
     self.configuration = configuration
   }
 
@@ -65,7 +68,10 @@ public struct AzureStorage {
 }
 
 public extension Application {
-  var azureStorage: AzureStorage { .init(self) }
+  var azureStorage: AzureStorage {
+    .init(self)
+  }
+
   var blobStorage: BlobService { BlobService(azureStorage) }
   var blobContainers: ContainerService { ContainerService(azureStorage) }
 }

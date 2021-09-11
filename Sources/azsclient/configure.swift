@@ -21,7 +21,7 @@ public func configure(_ app: Application) throws {
 public func routes(_ app: Application) throws {
   app.on(.GET, "createcontainer", ":name") { req -> EventLoopFuture<String> in
     let containerName = req.parameters.get("name") ?? "testcontainer"
-    return req.application.blobContainers.create_v2(container: containerName, on: req.eventLoop).map { _ in
+    return req.application.blobContainers.create_v2(container: ContainerName(containerName)!, on: req.eventLoop).map { _ in
       return "Created container \(containerName)"
     }
   }
