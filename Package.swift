@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.5
 import PackageDescription
 
 let package = Package(
@@ -16,13 +16,13 @@ let package = Package(
       targets: ["AzureStorage"]),
   ],
   dependencies: [
-    .package(url: "https://github.com/apple/swift-argument-parser", from: "0.4.1"),
-    .package(url: "https://github.com/vapor/vapor.git", from: "4.36.0"),
+    .package(url: "https://github.com/apple/swift-argument-parser", from: "1.0.1"),
+    .package(url: "https://github.com/vapor/vapor.git", from: "4.48.7"),
     .package(url: "https://github.com/jabwd/XMLParsing.git", from: "0.0.4"),
-    .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.2.0"),
+    .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.6.0"),
   ],
   targets: [
-    .target(
+    .executableTarget(
       name: "azsclient",
       dependencies: [
         "AzureStorage",

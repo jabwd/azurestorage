@@ -32,7 +32,7 @@ extension HTTPHeaders {
     // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
     // self.add(name: .authorization, value: authorization.headerValue)
     let signature = generateSignature(method, headers: self, uri: url, configuration: config)
-    self.add(name: .authorization, value: "SharedKey \(signature)")
+    self.add(name: .authorization, value: "SharedKey \(config.accountName):\(signature)")
   }
 
 }
