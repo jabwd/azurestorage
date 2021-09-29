@@ -32,6 +32,17 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     self.completionHandler = completion
   }
 
+  deinit {
+    if self.fileHandle != nil {
+      do {
+        try self.fileHandle.close()
+      } catch {
+
+      }
+      self.fileHandle = nil
+    }
+  }
+
   public func didReceiveHead(
     task: HTTPClient.Task<Response>,
     _ head: HTTPResponseHead
