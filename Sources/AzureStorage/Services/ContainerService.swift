@@ -77,11 +77,15 @@ public final class ContainerService {
 
   public func create_v2(container: ContainerName, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
     let uri = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container.value)?restype=container")
-    let headers = HTTPHeaders.defaultAzureStorageHeaders
+    var headers = HTTPHeaders.defaultAzureStorageHeaders
     do {
+      headers.authorizeFor(method: .PUT, url: uri, config: storage.configuration)
+      print("headers: \(headers)")
       let request = try HTTPClient.Request(url: uri.string, method: .PUT, headers: headers, body: nil)
-      return storage.httpClient.execute(request: request).hop(to: eventLoop).flatMap { response -> EventLoopFuture<Void> in
+      return storage.httpClient.execute(request: request).flatMap { response -> EventLoopFuture<Void> in
+        print("Working on returns")
         if response.status == .created {
+          print("Returned success?")
           return eventLoop.makeSucceededFuture(())
         }
         guard let error = response.azsError else {
@@ -89,6 +93,7 @@ public final class ContainerService {
             ContainerError.unknownError(container.value, message: "Unknown error: \(response.status)")
           )
         }
+        print("\(error)")
         return eventLoop.makeFailedFuture(
           ContainerError.createFailed(container.value, error: error)
         )

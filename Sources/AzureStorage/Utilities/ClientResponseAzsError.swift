@@ -39,9 +39,9 @@ extension HTTPClient.Response {
       return nil
     }
     do {
+      let xmlStr = String(data: data, encoding: .utf8)
       let decoder = XMLDecoder()
-      let response = try decoder.decode(ErrorEntity.self, from: data)
-      return response
+      return try decoder.decode(ErrorEntity.self, from: data)
     } catch {
       return nil
     }
