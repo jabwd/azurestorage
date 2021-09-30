@@ -7,14 +7,14 @@
 
 import Vapor
 
-extension HTTPHeaders {
+public extension HTTPHeaders {
 
   /// By default all requests need to have a date (in as pecific format)
   /// and version header attached, this static variable provides the default set for most requests
   static var defaultAzureStorageHeaders: HTTPHeaders {
     HTTPHeaders([
-      (AzureStorage.dateHeader, Date().xMSDateFormat),
-      (AzureStorage.versionHeader, AzureStorage.version),
+      ("x-ms-date", Date().xMSDateFormat),
+      ("x-ms-version", "2019-07-07"),
     ])
   }
 
@@ -27,21 +27,31 @@ extension HTTPHeaders {
   mutating func authorizeFor(
     method: HTTPMethod,
     url: URI,
-    config: StorageConfiguration
+    config: AzureStorage.Configuration
   ) {
     // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
     // self.add(name: .authorization, value: authorization.headerValue)
-    let signature = generateSignature(method, headers: self, uri: url, configuration: config)
+    let signature = generateSignature(method, headers: self, url: URL(string: url.string)!, configuration: config)
     self.add(name: .authorization, value: "SharedKey \(config.accountName):\(signature)")
   }
 
+  mutating func authorizeFor(
+    method: HTTPMethod,
+    url: URL,
+    config: AzureStorage.Configuration
+  ) {
+    // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
+    // self.add(name: .authorization, value: authorization.headerValue)
+    let signature = generateSignature(method, headers: self, url: url, configuration: config)
+    self.add(name: .authorization, value: "SharedKey \(config.accountName):\(signature)")
+  }
 }
 
 fileprivate func generateSignature(
   _ method: HTTPMethod,
   headers: HTTPHeaders,
-  uri: URI,
-  configuration: StorageConfiguration
+  url: URL,
+  configuration: AzureStorage.Configuration
 ) -> String {
   var canonicalizedHeaders: [(String, String)] = []
   for header in headers {
@@ -72,8 +82,8 @@ fileprivate func generateSignature(
   }
 
   // TODO: I probably have to remove percent encoding from the path variable here?
-  stringToSign.append("/\(configuration.accountName)\(uri.path)")
-  if let params = uri.query?.queryParameters {
+  stringToSign.append("/\(configuration.accountName)\(url.path)")
+  if let params = url.query?.queryParameters {
     let sortedParams = params.sorted { (lh, rh) -> Bool in
       lh.key.compare(rh.key) == .orderedAscending
     }

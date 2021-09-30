@@ -3,24 +3,11 @@ import XCTVapor
 import Vapor
 @testable import AzureStorage
 
-extension StorageConfiguration {
-  static var developmentConfiguration: StorageConfiguration {
-    StorageConfiguration(
-      accountName: "devstoreaccount1",
-      sharedKey: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
-      useHttps: false,
-      blobEndpoint: URL(string: "http://127.0.0.1:10000/devstoreaccount1")!,
-      queueEndpoint: URL(string: "http://127.0.0.1:10001/devstoreaccount1")!,
-      tableEndpoint: URL(string: "http://127.0.0.1:10001/devstoreaccount1")!
-    )
-  }
-}
-
 final class BlobstorageSwiftTests: XCTestCase {
   let app: Application = Application(.testing)
 
   override func setUp() {
-    app.azureStorageConfiguration = .developmentConfiguration
+    app.azureStorageConfiguration = AzureStorage.Configuration()
   }
 
   override func tearDown() {
@@ -73,22 +60,6 @@ final class BlobstorageSwiftTests: XCTestCase {
   //        group.wait()
   //    }
 
-  func testCreateContainer() {
-    let group = DispatchGroup()
-    group.enter()
-    _ = app.blobContainers.createIfNotExists("azurestoragetest", on: app.client).always { result in
-      switch result {
-      case .success():
-        break
-      case .failure(let error):
-        XCTAssertTrue(false, "Error: \(error)")
-        break
-      }
-      group.leave()
-    }
-    group.wait()
-  }
-
   func testBlobs() {
 
 //    let group = DispatchGroup()
@@ -119,7 +90,6 @@ final class BlobstorageSwiftTests: XCTestCase {
 
   static var allTests = [
     //        ("testDecodeConnectionString", testDecodeConnectionString),
-    ("testCreateContainer", testCreateContainer),
     //        ("testListContainers", testListContainers),
     //        ("testDeleteContainer", testDeleteContainer),
     //        ("testListBlobs", testListBlobs),

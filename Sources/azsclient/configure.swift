@@ -7,48 +7,86 @@
 
 import Vapor
 import AzureStorage
+import VaporAzs
 
 public func configure(_ app: Application) throws {
   app.http.server.configuration.hostname = "127.0.0.1"
   app.http.server.configuration.port = 8080
 
-  let configuration = try StorageConfiguration("UseDevelopmentStorage=true;")
+  let configuration = AzureStorage.Configuration()
   app.azureStorageConfiguration = configuration
+
+  _ = app.azureStorage.container.createIfNotExists("azurestoragetest", on: app.eventLoopGroup.next())
+    .always({ result in
+      switch result {
+      case .success():
+        print("Container azurestoragetest created")
+      case .failure(let error):
+        print("Unable to create container: \(error)")
+      }
+    })
 
   try routes(app)
 }
 
 public func routes(_ app: Application) throws {
-//  app.on(.GET, "createcontainer", ":name") { req -> EventLoopFuture<String> in
-//    let containerName = req.parameters.get("name") ?? "testcontainer"
-//    return req.application.blobContainers.create_v2(container: containerName, on: req.eventLoop).map { _ in
-//      return "Created container \(containerName)"
-//    }
-//  }
-
   app.on(.GET, "download") { req -> EventLoopFuture<ClientResponse> in
-    let response = req.application.blobStorage.read("azurestoragetest", blobName: "testdownload", on: req.client)
+    let response = try req.application.azureStorage.blob.read("azurestoragetest", blobName: "bigbuckbunnysmoll.mp4", on: req.eventLoop)
     return response.map { clientResponse -> ClientResponse in
       var finalResponse = clientResponse
-      finalResponse.headers.replaceOrAdd(name: "Content-Disposition", value: "inline; filename=\"spacemarine.mp4\"")
-      return finalResponse
+      finalResponse.headers.replaceOrAdd(name: "Content-Disposition", value: "inline; filename=\"bigbuckbunnysmoll.mp4\"")
+      let response = ClientResponse(status: finalResponse.status, headers: finalResponse.headers, body: finalResponse.body)
+      return response
     }
   }
 
   app.on(.GET, "downloadv2") { req -> EventLoopFuture<Response> in
-    return try req.application.blobStorage.stream(blob: "testdownload", container: "azurestoragetest", fileName: "spacemarine.mp4", headers: HTTPHeaders([
-      ("content-type", "audio/wav"),
-      ("kanker", "test header krijg de tyfus")
+    return try req.application.azureStorage.blob.stream(blob: "bigbuckbunnysmoll.mp4", container: "azurestoragetest", fileName: "bigbuckbunnysmoll.mp4", headers: HTTPHeaders([
+      ("content-type", "video/mp4")
     ]), with: req)
   }
 
   app.on(.GET, "downloadtofile") { req -> EventLoopFuture<HTTPStatus> in
     let path = "/tmp/out.mp4"
     print("Downloading")
-    return try req.application.blobStorage.downloadTo(filePath: path, container: "azurestoragetest", blob: "testdownload", fileio: app.fileio, client: app.http.client.shared, on: req.eventLoop).map({ _ in
+    return try req.application.azureStorage.blob.downloadTo(filePath: path, container: "azurestoragetest", blob: "bigbuckbunny.mp4", fileio: app.fileio, on: req.eventLoop).map({ _ in
       print("Downloading done")
       return .ok
     })
+  }
+
+  app.on(.GET, "testdelete") { req -> EventLoopFuture<HTTPStatus> in
+    return uploadFile(req).flatMap { _ in
+      return try! req.application.azureStorage.blob.delete("azurestoragetest", blobName: "bigbuckbunnysmoll.mp4", on: req.eventLoop).map { status in
+        if (status) {
+          return .ok
+        }
+        return .internalServerError
+      }
+    }
+  }
+
+  func uploadFile(_ req: Request) -> EventLoopFuture<HTTPStatus> {
+    let path = "/Users/jabwd/Documents/videos/bigbucksmoll.mp4"
+    let client = req.application.azureStorage.blob
+    return req.application.fileio.openFile(path: path, eventLoop: req.eventLoop).flatMap { (fileHandle, fileRegion) -> EventLoopFuture<HTTPStatus> in
+      var blockIDs: [String] = []
+      let readChunkedFut = req.application.fileio.readChunked(fileRegion: fileRegion, allocator: ByteBufferAllocator(), eventLoop: req.eventLoop) { buff -> EventLoopFuture<Void> in
+        return try! client.uploadBlock("azurestoragetest", blob: "bigbuckbunnysmoll.mp4", buffer: buff, on: req.eventLoop).map {
+          blockIDs.append($0!)
+        }
+      }
+      return readChunkedFut.flatMap { _ in
+        try? fileHandle.close()
+        return try! client.finalize("azurestoragetest", blobName: "bigbuckbunnysmoll.mp4", list: blockIDs, on: req.eventLoop).map({ response in
+          return response.status
+        })
+      }
+    }
+  }
+
+  app.on(.GET, "testupload") { req -> EventLoopFuture<HTTPStatus> in
+    return uploadFile(req)
   }
 
   app.get("shutdown") { req -> HTTPStatus in
@@ -72,6 +110,7 @@ public func routes(_ app: Application) throws {
   }
 
   app.on(.POST, "upload", body: .stream) { req -> EventLoopFuture<HTTPStatus> in
+
     enum BodyStreamWritingToDiskError: Error {
       case streamFailure(Error)
       case fileHandleClosedFailure(Error)

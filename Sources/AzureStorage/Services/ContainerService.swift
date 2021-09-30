@@ -5,119 +5,110 @@
 //  Created by Antwan van Houdt on 21/01/2021.
 //
 
-import Vapor
 import XMLParsing
+import Foundation
+import NIO
+import NIOHTTP1
 
-public final class ContainerService {
+public struct ContainerService {
   private let storage: AzureStorage
 
-  internal init(_ storage: AzureStorage) {
+  init(_ storage: AzureStorage) {
     self.storage = storage
   }
 
-  /// Lits all the available container names in a azure storage subscription
-  /// - Parameter client: A `HTTPClient` to perform work on. This client should be on your current `EventLoop`
-  /// - Returns: A future containing a list of available containers to work with
-  public func list(on client: Client) -> EventLoopFuture<[Container]> {
-    let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/?comp=list")
-    return storage.execute(.GET, url: url, on: client).flatMap { response -> EventLoopFuture<[Container]> in
-      guard var body = response.body, response.status == .ok else {
-        return client.eventLoop.makeFailedFuture(ContainerError.listFailed)
-      }
-      let data = body.readData(length: body.readableBytes) ?? Data()
-      let decoder = XMLDecoder()
-      do {
+  // MARK: -
+
+  /// Lists blob containers in the current blobstorage subscription
+  /// - Parameter eventLoop: EventLoop to return the result on
+  /// - Returns: A future result containing a list of containers
+  public func listContainers(on eventLoop: EventLoop) -> EventLoopFuture<[Container]> {
+    let url = URL(string: "\(storage.config.blobEndpoint.absoluteString)?comp=list")!
+    do {
+      return try storage.execute(.GET, url: url).flatMapThrowing { response -> [Container] in
+        guard var body = response.body, response.status == .ok else {
+          throw ContainerError.listFailed
+        }
+        guard let data = body.readData(length: body.readableBytes) else {
+          throw ContainerError.unknownError("", message: "Unable to read body")
+        }
+        let decoder = XMLDecoder()
         let response = try decoder.decode(ContainersEnumerationResultsEntity.self, from: data)
-        let containers = response.containers.list.map { Container($0) }
-        return client.eventLoop.makeSucceededFuture(containers)
-      } catch {
-        return client.eventLoop.makeFailedFuture(error)
-      }
+        return response.containers.list.map { Container($0) }
+      }.hop(to: eventLoop)
+    } catch {
+      return eventLoop.makeFailedFuture(error)
     }
   }
 
-  /// Convenience method that lists all available containers first, if the wanted container is not found
-  /// it will attempt to create one.
+  /// Lists the blobs available in a given container
   /// - Parameters:
-  ///   - container: Container name to ensure exists
-  ///   - client: A `HTTPClient` to perform work on. This client should be on your current `EventLoop`
-  /// - Returns: Succeeded future if the container exists or has been created successfully
-  public func createIfNotExists(_ container: String, on client: Client) -> EventLoopFuture<Void> {
-    self.list(on: client).flatMap { containers -> EventLoopFuture<Void> in
+  ///   - container: Container name to list
+  ///   - eventLoop: EventLoop to return the resulting blob list on
+  /// - Returns: A future result of a list of blobs
+  public func listBlobs(_ container: String, on eventLoop: EventLoop) -> EventLoopFuture<[Blob]> {
+    let url = URL(string: "\(storage.config.blobEndpoint.absoluteString)/\(container)?restype=container&comp=list")!
+    do {
+      return try storage.execute(.GET, url: url).flatMapThrowing { response -> [Blob] in
+        guard var body = response.body else {
+          return []
+        }
+        guard let data = body.readData(length: body.readableBytes) else {
+          return []
+        }
+        let decoder = XMLDecoder()
+        let response = try decoder.decode(BlobsEnumerationResultsEntity.self, from: data)
+        let blobs = response.blobs.list.map { Blob($0) }
+        return blobs
+      }.hop(to: eventLoop)
+    } catch {
+      return eventLoop.makeFailedFuture(error)
+    }
+  }
+
+  public func createIfNotExists(_ container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    self.listContainers(on: eventLoop).flatMap { containers -> EventLoopFuture<Void> in
       if (containers.first { $0.name == container } != nil) {
-        return client.eventLoop.makeSucceededFuture(())
+        return eventLoop.makeSucceededFuture(())
       }
-      return self.create(container, on: client)
+      return self.create(container, on: eventLoop)
     }
   }
 
+  public func create(_ container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    let url = URL(string: "\(storage.config.blobEndpoint.absoluteString)/\(container)?restype=container")!
+    do {
+      return try storage.execute(.PUT, url: url).flatMapThrowing { response in
+        if response.status == .created {
+          return
+        }
 
-  /// Creates a container on the currently configured azure storage account
-  /// - Parameters:
-  ///   - container: Container name to create
-  ///   - client: A `HTTPClient` to perform work on. This client should be on your current `EventLoop`
-  /// - Returns: Succeeded future if the container was created
-  public func create(_ container: String, on client: Client) -> EventLoopFuture<Void> {
-    let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container)?restype=container")
-    return storage.execute(.PUT, url: url, on: client).flatMap { response -> EventLoopFuture<Void> in
-      if response.status == .created {
-        return client.eventLoop.makeSucceededFuture(())
-      }
-
-      guard let error = response.azsError else {
-        return client.eventLoop.makeFailedFuture(
-          ContainerError.unknownError(container, message: response.description)
-        )
-      }
-      return client.eventLoop.makeFailedFuture(
-        ContainerError.createFailed(container, error: error)
-      )
+        guard let error = response.azsError else {
+          throw ContainerError.unknownError(container, message: "\(response.status)")
+        }
+        throw ContainerError.createFailed(container, error: error)
+      }.hop(to: eventLoop)
+    } catch {
+      return eventLoop.makeFailedFuture(error)
     }
   }
 
-//  public func create_v2(container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
-//    guard let container = container.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-//      return eventLoop.makeFailedFuture(BlobError.unknown("Unable to escape container name"))
-//    }
-//    let uri = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container)?restype=container")
-//    let headers = HTTPHeaders.defaultAzureStorageHeaders
-//    do {
-//      let request = try HTTPClient.Request(url: uri.string, method: .PUT, headers: headers, body: nil)
-//      return storage.httpClient.execute(request: request).hop(to: eventLoop).flatMap { response -> EventLoopFuture<Void> in
-//        if response.status == .created {
-//          return eventLoop.makeSucceededFuture(())
-//        }
-//        guard let error = response.azsError else {
-//          return eventLoop.makeFailedFuture(
-//            ContainerError.unknownError(container, message: "Unknown error: \(response.status)")
-//          )
-//        }
-//        return eventLoop.makeFailedFuture(
-//          ContainerError.createFailed(container, error: error)
-//        )
-//      }
-//    } catch {
-//      return eventLoop.makeFailedFuture(error)
-//    }
-//  }
-
-  /// Attemps to delete a given container from the configured storage account
-  /// - Parameters:
-  ///   - container: The name of the container to delete (Should be URL safe)
-  ///   - client: A `HTTPClient` to work on. This client should be on your current `EventLoop`, in request handlers use the request's client
-  /// - Returns: Succeeded futer if the container was deleted succesfully
-  public func delete(_ container: String, on client: Client) -> EventLoopFuture<Void> {
-    let url = URI(string: "\(storage.configuration.blobEndpoint.absoluteString)/\(container)?restype=container")
-    return storage.execute(.DELETE, url: url, on: client).flatMap { response -> EventLoopFuture<Void> in
-      if response.status == .accepted {
-        return client.eventLoop.makeSucceededFuture(())
-      }
-      // attempt to decode the error message that azure storage is returning
-      // for easier debugging
-      guard let error = response.azsError else {
-        return client.eventLoop.makeFailedFuture(ContainerError.deleteFailed(container, error: nil))
-      }
-      return client.eventLoop.makeFailedFuture(ContainerError.deleteFailed(container, error: error))
+  public func delete(_ container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    let url = URL(string: "\(storage.config.blobEndpoint.absoluteString)/\(container)?restype=container")!
+    do {
+      return try storage.execute(.DELETE, url: url).flatMapThrowing { response in
+        if response.status == .accepted {
+          return
+        }
+        // attempt to decode the error message that azure storage is returning
+        // for easier debugging
+        guard let error = response.azsError else {
+          throw ContainerError.deleteFailed(container, error: nil)
+        }
+        throw ContainerError.deleteFailed(container, error: error)
+      }.hop(to: eventLoop)
+    } catch {
+      return eventLoop.makeFailedFuture(error)
     }
   }
 }

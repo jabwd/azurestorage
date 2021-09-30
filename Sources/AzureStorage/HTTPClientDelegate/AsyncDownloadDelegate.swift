@@ -9,7 +9,7 @@ import Foundation
 import AsyncHTTPClient
 import NIOHTTP1
 import NIO
-import Vapor
+import Logging
 
 public typealias AsyncDownloadCompletionHandler = () -> Void
 
@@ -70,12 +70,13 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
         }
       }
     }
-    return task.eventLoop.makeFailedFuture(Abort(head.status, reason: "Download failed with status"))
+    return task.eventLoop.makeFailedFuture(StorageError.downloadFailed(head.status))
   }
 
   private func writeBacklog(on eventLoop: EventLoop) -> EventLoopFuture<Void> {
     guard let fileHandle = self.fileHandle else {
-      return eventLoop.makeFailedFuture(Abort(.internalServerError, reason: "No filehandle to start writing with regarding backlog"))
+      // no file handle to write to the backlog
+      return eventLoop.makeFailedFuture(StorageError.downloadFailed(.internalServerError))
     }
     var buffers: [EventLoopFuture<Void>] = []
     for buffer in bufferBacklog {
@@ -106,9 +107,11 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     let writingTag = bufCount
     return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop).map { _ in
       self.lastWrittenBuffer = writingTag
+      print("Written buffer \(writingTag)")
       self.logger.trace("Written buffer \(writingTag)")
       if writingTag == self.lastBuffer && self.didReceiveEnd {
         self.logger.trace("End received while writing buffers, closing filehandle")
+        print("Writing now closing")
         try? self.fileHandle?.close()
         self.fileHandle = nil
         self.completionHandler()
@@ -121,6 +124,7 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     lastBuffer = bufCount
     didReceiveEnd = true
     self.logger.trace("Last written buffer: \(lastWrittenBuffer), bufCount: \(bufCount)")
+    print("Request finished")
     if lastWrittenBuffer == bufCount {
       if let fileHandle = self.fileHandle {
         try? fileHandle.close()
