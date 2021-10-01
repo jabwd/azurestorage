@@ -22,9 +22,6 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
   private var bufferBacklog: [ByteBuffer] = []
   private var didReceiveEnd: Bool = false
   private let completionHandler: AsyncDownloadCompletionHandler
-  private var bufCount: Int = 0
-  private var lastWrittenBuffer: Int = 0
-  private var lastBuffer: Int = 0
   private let logger: Logger
 
   public init(writingToPath filePath: String, fileio: NonBlockingFileIO, completion: @escaping AsyncDownloadCompletionHandler) {
@@ -35,7 +32,6 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
   }
 
   deinit {
-    self.logger.trace("Download delegate deinit")
     if self.fileHandle != nil {
       do {
         try self.fileHandle?.close()
@@ -50,7 +46,7 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     task: HTTPClient.Task<Response>,
     _ head: HTTPResponseHead
   ) -> EventLoopFuture<Void> {
-    self.logger.info("Recv download HEAD")
+    self.logger.trace("Recv download HEAD")
     // The only thing we need to do here is check whether the status code is valid
     // the rest of the header I don't care about right now
     if head.status == .ok {
@@ -60,10 +56,8 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
         // If before writing the entire backlog out we already received the end of the request
         // we have to close here when this is done doing its work, otherwise it has to be done later
         let shouldClose = self.didReceiveEnd
-        self.logger.trace("Writing download backlog, should close: \(shouldClose)")
         return self.writeBacklog(on: task.eventLoop).map { _ in
           if shouldClose {
-            self.logger.trace("Closing download after writing backlog")
             try? self.fileHandle?.close()
             self.fileHandle = nil
           }
@@ -84,7 +78,8 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
       buffers.append(future)
     }
     return buffers.flatten(on: eventLoop).map { _ in
-      // Free up any memory we might still be using :), we want our peaks to be low
+      // Make sure these are deallocated as soon as we don't need them anymore;
+      // this reduces our peak memory usage (hopefully)
       buffers = []
     }
   }
@@ -93,8 +88,7 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
     task: HTTPClient.Task<Response>,
     _ buffer: ByteBuffer
   ) -> EventLoopFuture<Void> {
-    self.logger.trace("Received download body part")
-    bufCount += 1
+    logger.trace("Received download body part")
     guard let fileHandle = self.fileHandle else {
       if didReceiveEnd {
         logger.error("Received body part after request closed, this should never happen")
@@ -103,35 +97,18 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
       logger.trace("Writting to download backlog")
       return task.eventLoop.makeSucceededFuture(())
     }
-    logger.trace("Writing chunk")
-    let writingTag = bufCount
-    return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop).map { _ in
-      self.lastWrittenBuffer = writingTag
-      print("Written buffer \(writingTag)")
-      self.logger.trace("Written buffer \(writingTag)")
-      if writingTag == self.lastBuffer && self.didReceiveEnd {
-        self.logger.trace("End received while writing buffers, closing filehandle")
-        print("Writing now closing")
-        try? self.fileHandle?.close()
-        self.fileHandle = nil
-        self.completionHandler()
-      }
-    }
+    return fileio.write(fileHandle: fileHandle, buffer: buffer, eventLoop: task.eventLoop)
   }
 
   public func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Response {
-    self.logger.trace("Request finished?")
-    lastBuffer = bufCount
+    self.logger.trace("Download finished")
     didReceiveEnd = true
-    self.logger.trace("Last written buffer: \(lastWrittenBuffer), bufCount: \(bufCount)")
     print("Request finished")
-    if lastWrittenBuffer == bufCount {
-      if let fileHandle = self.fileHandle {
-        try? fileHandle.close()
-        self.fileHandle = nil
-        self.logger.trace("Closing filehandle, download completed")
-        completionHandler()
-      }
+    if let fileHandle = self.fileHandle {
+      try? fileHandle.close()
+      self.fileHandle = nil
+      self.logger.trace("Closing filehandle, download completed")
+      completionHandler()
     }
   }
 

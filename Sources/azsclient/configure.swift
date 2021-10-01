@@ -55,6 +55,15 @@ public func routes(_ app: Application) throws {
     })
   }
 
+  app.on(.GET, "downloadtofilesmall") { req -> EventLoopFuture<HTTPStatus> in
+    let path = "/tmp/out.txt"
+    print("Downloading")
+    return try req.application.azureStorage.blob.downloadTo(filePath: path, container: "azurestoragetest", blob: "spanish.txt", fileio: app.fileio, on: req.eventLoop).map({ _ in
+      print("Downloading done")
+      return .ok
+    })
+  }
+
   app.on(.GET, "testdelete") { req -> EventLoopFuture<HTTPStatus> in
     return uploadFile(req).flatMap { _ in
       return try! req.application.azureStorage.blob.delete("azurestoragetest", blobName: "bigbuckbunnysmoll.mp4", on: req.eventLoop).map { status in
