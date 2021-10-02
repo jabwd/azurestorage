@@ -1,6 +1,7 @@
 import XCTest
 import XCTVapor
 import Vapor
+@testable import VaporAzs
 @testable import AzureStorage
 
 final class AzureStorageTests: XCTestCase {
@@ -95,9 +96,14 @@ final class AzureStorageTests: XCTestCase {
     }
   }
 
+  func testBlobs() {
+
+  }
+
   static var allTests = [
     ("testDecodeConnectionString", testDecodeConnectionString),
     ("testContainerName", testContainerName),
-    ("testContainers", testContainers)
+    ("testContainers", testContainers),
+    ("testBlobs", testBlobs)
   ]
 }

@@ -26,7 +26,7 @@ public struct AzureStorage {
     var request = try HTTPClient.Request(url: url, method: method)
     if let body = body {
       headers.add(name: "Content-Length", value: "\(body.readableBytes)")
-      headers.add(name: .contentType, value: "application/octet-stream")
+      headers.add(name: "Content-Type", value: "application/octet-stream")
       request.body = .byteBuffer(body)
     }
     headers.authorizeFor(method: method, url: url, config: config)

@@ -5,22 +5,7 @@
 //  Created by Antwan van Houdt on 05/01/2021.
 //
 
-import Vapor
-
-public extension Application {
-  var azureStorageConfiguration: AzureStorage.Configuration? {
-    get {
-      self.storage[StorageConfigurationKey.self]
-    }
-    set {
-      self.storage[StorageConfigurationKey.self] = newValue
-    }
-  }
-}
-
-struct StorageConfigurationKey: StorageKey {
-  typealias Value = AzureStorage.Configuration
-}
+import Foundation
 
 extension AzureStorage {
   public struct Configuration: Equatable {

@@ -10,6 +10,7 @@ import XMLParsing
 import AsyncHTTPClient
 import NIOHTTP1
 import NIO
+import AsyncKit
 
 public struct BlobService {
   public let storage: AzureStorage

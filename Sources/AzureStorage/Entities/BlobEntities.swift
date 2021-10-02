@@ -5,7 +5,6 @@
 //  Created by Antwan van Houdt on 14/01/2021.
 //
 
-import Vapor
 import Foundation
 
 struct BlockListEntity: Codable {

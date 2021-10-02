@@ -10,7 +10,7 @@ import Foundation
 public struct ErrorEntity: Codable {
   let error: AzsError
   
-  var message: String {
+  public var message: String {
     error.message
   }
   

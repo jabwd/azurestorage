@@ -5,7 +5,9 @@
 //  Created by Antwan van Houdt on 12/05/2021.
 //
 
-import Vapor
+import NIOHTTP1
+import Crypto
+import Foundation
 
 public extension HTTPHeaders {
 
@@ -18,23 +20,6 @@ public extension HTTPHeaders {
     ])
   }
 
-
-  /// Adds the authorization headers to this instance of `HTTPHeaders`
-  /// - Parameters:
-  ///   - method: HTTPMethod used in the request
-  ///   - url: Destination URL
-  ///   - config: Azure storage configuration object
-  mutating func authorizeFor(
-    method: HTTPMethod,
-    url: URI,
-    config: AzureStorage.Configuration
-  ) {
-    // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
-    // self.add(name: .authorization, value: authorization.headerValue)
-    let signature = generateSignature(method, headers: self, url: URL(string: url.string)!, configuration: config)
-    self.add(name: .authorization, value: "SharedKey \(config.accountName):\(signature)")
-  }
-
   mutating func authorizeFor(
     method: HTTPMethod,
     url: URL,
@@ -43,7 +28,7 @@ public extension HTTPHeaders {
     // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
     // self.add(name: .authorization, value: authorization.headerValue)
     let signature = generateSignature(method, headers: self, url: url, configuration: config)
-    self.add(name: .authorization, value: "SharedKey \(config.accountName):\(signature)")
+    self.add(name: "Authorization", value: "SharedKey \(config.accountName):\(signature)")
   }
 }
 

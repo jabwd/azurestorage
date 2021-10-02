@@ -24,7 +24,7 @@ extension BlobService {
     with req: Request
   ) throws -> EventLoopFuture<Response> {
     let endpoint = "/\(container)/\(blob)"
-    let url = URI(string: "\(storage.config.blobEndpoint.absoluteString)\(endpoint)")
+    let url = URL(string: "\(storage.config.blobEndpoint.absoluteString)\(endpoint)")!
 
     var requestHeaders = HTTPHeaders.defaultAzureStorageHeaders
 
@@ -36,7 +36,7 @@ extension BlobService {
     }
 
     requestHeaders.authorizeFor(method: .GET, url: url, config: storage.config)
-    let request = try HTTPClient.Request(url: url.string, method: .GET, headers: requestHeaders)
+    let request = try HTTPClient.Request(url: url, method: .GET, headers: requestHeaders)
 
     // Generate the provisional response, which will be modified later once AZS
     // comes back to us with at least the headers response (this is done in the streaming delegate)

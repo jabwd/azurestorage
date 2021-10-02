@@ -14,6 +14,15 @@ public extension Application {
     AzureStorageClient(application: self).shared
   }
 
+  var azureStorageConfiguration: AzureStorage.Configuration {
+    get {
+      AzureStorageClient(application: self).configuration
+    }
+    set {
+      AzureStorageClient(application: self).configuration = newValue
+    }
+  }
+
   struct AzureStorageClient {
     let application: Application
 
