@@ -50,7 +50,7 @@ let package = Package(
         "AzureStorage"
       ]),
     .testTarget(
-      name: "BlobstorageSwiftTests",
+      name: "AzureStorageTests",
       dependencies: [
         "AzureStorage",
         .product(name: "XCTVapor", package: "vapor")
