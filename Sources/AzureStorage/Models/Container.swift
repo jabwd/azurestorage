@@ -8,16 +8,23 @@
 import Foundation
 
 public struct Container: Codable, CustomStringConvertible {
-  public let name: String
+  public let name: ContainerName
   public let lastModified: Date?
   public let etag: String
   public let leaseStatus: String
   public let leaseState: String
   public let immutibilityPolicy: Bool?
   public let legalHold: Bool?
+
+  init(name: ContainerName) {
+    self.name = name
+    self.etag = ""
+    self.leaseStatus = ""
+    self.leaseState = ""
+  }
   
   init(_ entity: ContainerEntity) {
-    self.name = entity.name
+    self.name = ContainerName(unsafeName: entity.name)
     self.lastModified = DateFormatter.xMSDateFormatter.date(from: entity.properties.lastModified)
     self.etag = entity.properties.etag
     self.leaseStatus = entity.properties.leaseStatus

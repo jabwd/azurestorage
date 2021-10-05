@@ -16,7 +16,9 @@ extension Array where Element == UInt8 {
   // TODO: Figure out why the fuck CryptoKit has no random number primitive
   // We could include libbsd to use arc4random on linux, but can't be bothered
   // with the dependency hell that library gives you right now
-  // besides, /dev/random is good enough on modern OS' anyway.
+  // besides, /dev/urandom is good enough on modern OS' anyway.
+
+  // This implementation will horribly break when using /dev/random in an ubuntu based container
   static func random(bytes: Int) -> [UInt8]? {
     guard let fd = fopen("/dev/urandom", "r") else {
       return nil

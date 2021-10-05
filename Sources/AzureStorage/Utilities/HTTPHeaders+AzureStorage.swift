@@ -25,8 +25,6 @@ public extension HTTPHeaders {
     url: URL,
     config: AzureStorage.Configuration
   ) {
-    // let authorization = StorageAuthorization(method, headers: self, url: url, config: config)
-    // self.add(name: .authorization, value: authorization.headerValue)
     let signature = generateSignature(method, headers: self, url: url, configuration: config)
     self.add(name: "Authorization", value: "SharedKey \(config.accountName):\(signature)")
   }
