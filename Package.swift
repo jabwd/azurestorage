@@ -71,7 +71,7 @@ let package = Package(
       dependencies: [
         "AzureStorage",
         "VaporAzs",
-        .product(name: "XCTVapor", package: "vapor")
-      ]),
+        .product(name: "XCTVapor", package: "vapor"),
+      ], resources: [.process("Fixtures")]),
   ]
 )

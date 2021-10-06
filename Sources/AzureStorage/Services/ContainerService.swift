@@ -68,7 +68,7 @@ public struct ContainerService {
 
   public func createIfNotExists(_ container: String, on eventLoop: EventLoop) -> EventLoopFuture<Void> {
     self.listContainers(on: eventLoop).flatMap { containers -> EventLoopFuture<Void> in
-      if (containers.first { $0.name == container } != nil) {
+      if (containers.first { $0.name.value == container } != nil) {
         return eventLoop.makeSucceededFuture(())
       }
       return self.create(container, on: eventLoop)

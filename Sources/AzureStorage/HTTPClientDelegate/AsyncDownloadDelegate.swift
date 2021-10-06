@@ -103,7 +103,6 @@ public final class AsyncDownloadDelegate: HTTPClientResponseDelegate {
   public func didFinishRequest(task: HTTPClient.Task<Response>) throws -> Response {
     self.logger.trace("Download finished")
     didReceiveEnd = true
-    print("Request finished")
     if let fileHandle = self.fileHandle {
       try? fileHandle.close()
       self.fileHandle = nil

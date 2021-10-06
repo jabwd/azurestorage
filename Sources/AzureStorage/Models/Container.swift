@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Container: Codable, CustomStringConvertible {
+public struct Container: CustomStringConvertible {
   public let name: ContainerName
   public let lastModified: Date?
   public let etag: String
@@ -21,6 +21,9 @@ public struct Container: Codable, CustomStringConvertible {
     self.etag = ""
     self.leaseStatus = ""
     self.leaseState = ""
+    self.lastModified = nil
+    self.legalHold = nil
+    self.immutibilityPolicy = nil
   }
   
   init(_ entity: ContainerEntity) {
