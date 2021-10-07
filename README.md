@@ -3,17 +3,19 @@
 A SPM package for communicating with an azure storage account using Vapor.
 This package is under development and not ready for production use.
 
+A separate package is also included called `AzureStorage` which does not depend on Vapor and can therefore be used anywhere where swift-nio is generally available.
+
 ## Features
 - [x] Listing containers in a given storage account
 - [x] Listing blobs in a container
-- [x] Basic container management
+- [x] Basic storage container management
 - [x] Async blob download
 - [x] Safari MP4 support
 - [ ] ACL Support
 - [ ] SAS support
 - [x] CRUD operations for blobs in a container
 - [ ] Improved error handling, especially XML errors returning from AZS
-- [ ] Azure Queue support. Basic support is WIP but I stopped due to project priorities shifting for now
+- [x] Basic storage queue's support
 - [ ] Things I probably forgot about
 
 I don't have plans to support TableQueue or the File service at this point in time
@@ -25,7 +27,13 @@ I don't have plans to support TableQueue or the File service at this point in ti
 In your configure step add the following lines:
 
 ```swift
-app.azureStorageConfiguration = try StorageConfiguration(Environment.get("AZURE_STORAGE_CONNECTION_STRING")!)
+import VaporAzs
+
+app.azureStorageConfiguration = try AzureStorage.configuration(Environment.get("AZURE_STORAGE_CONNECTION_STRING")!)
+// Get access to the development storage:
+let config = AzureStorage.Configuration()
+// Alternatively, the dev connection string is also supported
+let config = AzureStorage.Configuration("UseDevelopmentStorage=true")
 
 ```
 
@@ -38,9 +46,11 @@ Your production string would look similar to this: `DefaultEndpointsProtocol=htt
 To access an instance of azure storage you simply retrieve the service from your app, e.g.:
 
 ```swift
+import VaporAzs
+
 func someGetRequest(_ req: Request) throws -> HTTPStatus {
-    _ = req.application.blobContainers.createIfNotExists("testContainer").whenSucceeded { _ in 
-        // do your thing :)
+    _ = req.application.azureStorage.container.createIfNotExists("testContainer").whenSucceeded { _ in 
+        // do your thing
     }
     throw Abort(.notImplemented)
 }
@@ -72,7 +82,7 @@ func uploadBlock(_ req: Request) throws -> HTTPStatus {
                     return req.eventLoop.makeFailedFuture(Abort(.badRequest))
                 }
                 req.logger.info("Got uploaded body: \(buff.count)")
-                return req.application.blobStorage.uploadBlock(
+                return req.application.azureStorage.blob.uploadBlock(
                     Environment.value(for: .containerName),
                     blobName: upload.blobName.uuidString,
                     data: buff,
@@ -106,7 +116,7 @@ func finalizeUpload(_ req: Request) throws -> HTTPStatus {
             ))
         }
         req.logger.info("Found upload, sending blockIDs to blobstorage…")
-        return req.application.blobStorage.finalize(
+        return req.application.azureStorage.blob.finalize(
             Environment.value(for: .containerName),
             blobName: upload.blobName.uuidString,
             list: upload.blockIDs,
@@ -123,14 +133,14 @@ func finalizeUpload(_ req: Request) throws -> HTTPStatus {
 ### 4) Downloading blobs synchronously
 
 ```swift
-application.blobStorage.read(container, blobName: blobName, on: application.client)
+application.blobStorage.read(container, blobName: blobName, on: req.eventLoop)
 ```
 The read method will return a promise witha ClientRespones, of which the body can etiher be kept in memory or stored in a file using NIO's `FileIO`
 
 ### 5) Downloading blobs asynchronously
 This is mostly useful when you're trying to proxy certain things of blobstorage through your vapor backend, and don't want users to access blobstorage URLs directly. Additionally this has less of a performance and memory impact than asynhcronous downloads for responding directly to users.
 ```swift
-let provisionalResponsePromise = try! req.application.blobStorage.stream(
+let provisionalResponsePromise = try! req.application.azureStorage.blob.stream(
   blob: blobName,
   container: containerName,
   fileName: file.name, // Optionally: A filename, this will be attached in a header to ignore blob specific names
