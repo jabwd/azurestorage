@@ -9,6 +9,11 @@ import Vapor
 import AzureStorage
 import VaporAzs
 
+struct TestMessage: Codable, Content {
+  let id: UUID
+  let task: String
+}
+
 public func configure(_ app: Application) throws {
   app.http.server.configuration.hostname = "127.0.0.1"
   app.http.server.configuration.port = 8080
@@ -30,6 +35,48 @@ public func configure(_ app: Application) throws {
 }
 
 public func routes(_ app: Application) throws {
+  app.on(.GET, "queue") { req -> EventLoopFuture<StaticString> in
+    let queue = Queue(name: .init(unsafeName: "testqueue"), account: app.azureStorage)
+    return queue.create(on: req.eventLoop).flatMap { _ -> EventLoopFuture<StaticString> in
+      let test = TestMessage(id: UUID(), task: "testTask")
+      let msg = Queue.Message(
+        test,
+        secondsHidden: 0,
+        expiresInSeconds: 300,
+        dequeueCount: 5,
+        insertionTime: nil,
+        expirationTime: nil,
+        popReceipt: nil
+      )
+      return queue.publish(message: msg, on: req.eventLoop).map { _ -> StaticString in
+        "Message published"
+      }
+    }
+  }
+
+  app.on(.GET, "queue", "next") { req -> EventLoopFuture<[TestMessage]> in
+    let queue = Queue(name: .init(unsafeName: "testqueue"), account: app.azureStorage)
+    return queue.fetch(count: 2, visibilityTimeout: 1, on: req.eventLoop).flatMap { (messages: [Queue.Message<TestMessage>]) -> EventLoopFuture<[TestMessage]> in
+      let list = messages.map { msg in
+        msg.payload
+      }
+      var delete: [EventLoopFuture<Void>] = []
+      for msg in messages {
+        delete.append(queue.delete(message: msg, on: req.eventLoop))
+      }
+      return delete.flatten(on: req.eventLoop).map { _ -> [TestMessage] in
+        list
+      }
+    }
+  }
+
+  app.on(.GET, "queue", "clear") { req -> EventLoopFuture<HTTPStatus> in
+    let queue = Queue(name: .init(unsafeName: "testqueue"), account: app.azureStorage)
+    return queue.clear(on: req.eventLoop).map { _ -> HTTPStatus in
+      .ok
+    }
+  }
+
   app.on(.GET, "download") { req -> EventLoopFuture<ClientResponse> in
     let response = try req.application.azureStorage.blob.read("azurestoragetest", blobName: "bigbuckbunnysmoll.mp4", on: req.eventLoop)
     return response.map { clientResponse -> ClientResponse in
