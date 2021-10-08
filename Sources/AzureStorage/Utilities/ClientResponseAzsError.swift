@@ -7,6 +7,7 @@
 
 import AsyncHTTPClient
 import XMLParsing
+import Foundation
 
 extension HTTPClient.Response {
   /// Returns the AZS ErrorEntity if a body exists on the given ClientResponse
@@ -15,12 +16,12 @@ extension HTTPClient.Response {
     guard var body = self.body, body.readableBytes > 0 else {
       return nil
     }
-    guard let data = body.readData(length: body.readableBytes) else {
+    guard let bytes = body.readBytes(length: body.readableBytes) else {
       return nil
     }
     do {
       let decoder = XMLDecoder()
-      let response = try decoder.decode(ErrorEntity.self, from: data)
+      let response = try decoder.decode(ErrorEntity.self, from: Data(bytes))
       return response
     } catch {
       return nil

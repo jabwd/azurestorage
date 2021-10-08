@@ -8,6 +8,7 @@
 import Foundation
 import XMLParsing
 import NIO
+import NIOFoundationCompat
 import NIOHTTP1
 
 public struct Queue {
@@ -58,7 +59,8 @@ public struct Queue {
         throw QueueError.unknown("Error from storage: \(response.status)")
       }
       let readableBytes = body.readableBytes
-      let data = body.readData(length: readableBytes) ?? Data()
+      let bytes = body.readBytes(length: readableBytes) ?? []
+      let data = Data(bytes)
       let decoder = XMLDecoder()
       let result = try decoder.decode(MessageList.self, from: data)
       let list = result.messages?.compactMap {
@@ -87,7 +89,8 @@ public struct Queue {
         throw QueueError.unknown("Error from storage: \(response.status)")
       }
       let readableBytes = body.readableBytes
-      let data = body.readData(length: readableBytes) ?? Data()
+      let bytes = body.readBytes(length: readableBytes) ?? []
+      let data = Data(bytes)
       let decoder = XMLDecoder()
       let result = try decoder.decode(MessageList.self, from: data)
       let list = result.messages?.compactMap {

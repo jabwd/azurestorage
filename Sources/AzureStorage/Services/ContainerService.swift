@@ -29,11 +29,11 @@ public struct ContainerService {
         guard var body = response.body, response.status == .ok else {
           throw ContainerError.listFailed
         }
-        guard let data = body.readData(length: body.readableBytes) else {
+        guard let bytes = body.readBytes(length: body.readableBytes) else {
           throw ContainerError.unknownError("", message: "Unable to read body")
         }
         let decoder = XMLDecoder()
-        let response = try decoder.decode(ContainersEnumerationResultsEntity.self, from: data)
+        let response = try decoder.decode(ContainersEnumerationResultsEntity.self, from: Data(bytes))
         return response.containers.list.map { Container($0) }
       }.hop(to: eventLoop)
     } catch {
@@ -53,11 +53,11 @@ public struct ContainerService {
         guard var body = response.body else {
           return []
         }
-        guard let data = body.readData(length: body.readableBytes) else {
+        guard let bytes = body.readBytes(length: body.readableBytes) else {
           return []
         }
         let decoder = XMLDecoder()
-        let response = try decoder.decode(BlobsEnumerationResultsEntity.self, from: data)
+        let response = try decoder.decode(BlobsEnumerationResultsEntity.self, from: Data(bytes))
         let blobs = response.blobs.list.map { Blob($0) }
         return blobs
       }.hop(to: eventLoop)

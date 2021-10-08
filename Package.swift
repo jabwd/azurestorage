@@ -31,7 +31,7 @@ let package = Package(
     .package(name: "swift-argument-parser", url: "https://github.com/apple/swift-argument-parser", from: "1.0.1"),
     .package(name: "swift-log", url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
     .package(name: "vapor", url: "https://github.com/vapor/vapor.git", from: "4.48.7"),
-    .package(url: "https://github.com/jabwd/XMLParsing.git", from: "0.0.4"),
+    .package(url: "https://github.com/jabwd/XMLParsing.git", from: "0.0.6"),
     .package(name: "async-http-client", url: "https://github.com/swift-server/async-http-client.git", from: "1.6.0"),
 
   ],
